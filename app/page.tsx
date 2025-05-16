@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import React from "react";
 
@@ -18,7 +17,7 @@ export default function Home() {
   ]);
 
   // Session ID and timer logic
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [, setSessionId] = useState<string | null>(null);
   const [sessionStart, setSessionStart] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
 
@@ -65,11 +64,9 @@ export default function Home() {
 
   // Stub functions
   const startOnboarding = () => alert("Onboarding coming soon!");
-  const claimTask = (id: number) => alert(`Claimed task ${id}!`);
   const donate = (id: number) => alert(`Donate to message ${id}!`);
   const viewAllMessages = () => alert("View all messages coming soon!");
   const openDiscord = () => window.open("https://discord.gg/WGFvG8vv", "_blank");
-  const subscribeEmail = () => alert("Subscribe coming soon!");
 
   // Accrual Meter component
   function AccrualMeter({ elapsed }: { elapsed: number }) {
@@ -316,7 +313,7 @@ export default function Home() {
               transition={{ duration: 0.2 }}
               className="text-center"
             >
-              <div className="text-gray-600 text-xs">You've accrued:</div>
+              <div className="text-gray-600 text-xs">You&apos;ve accrued:</div>
               <div className={`text-2xl sm:text-3xl font-bold ${flash ? "text-blue-500" : "text-black"}`}>
                 ${formattedAccrued}
               </div>
@@ -594,7 +591,7 @@ export default function Home() {
         }
         return updatedEcoData.length > SECONDS ? updatedEcoData.slice(-SECONDS) : updatedEcoData;
       });
-    }, [elapsed]); // Only depend on elapsed. Functional updates handle maxValues.
+    }, [elapsed, inflationPerSec]); // Added inflationPerSec to the dependency array
 
     // Helper: format time
     function fmt(t: number) {
@@ -701,13 +698,11 @@ export default function Home() {
     const MemoizedChart = React.memo(function Chart({ 
       data, 
       color, 
-      label, 
-      maxValue 
+      label
     }: { 
       data: { t: number; v: number }[]; 
       color: string; 
       label: string;
-      maxValue: number;
     }) {
       // Early return for empty chart with placeholder
       if (data.length < 2) {
@@ -789,10 +784,10 @@ export default function Home() {
         <h3 className="text-sm font-medium text-gray-700 mb-2">Real-time Growth Charts</h3>
         <div className="flex flex-col sm:flex-row gap-3 w-full justify-center items-center">
           <div className="w-full sm:w-1/2">
-            <MemoizedChart data={userData} color={userColor} label="You" maxValue={maxValues.user} />
+            <MemoizedChart data={userData} color={userColor} label="You" />
           </div>
           <div className="w-full sm:w-1/2">
-            <MemoizedChart data={ecoData} color={ecoColor} label="Ecosystem" maxValue={maxValues.eco} />
+            <MemoizedChart data={ecoData} color={ecoColor} label="Ecosystem" />
           </div>
         </div>
       </div>
@@ -906,8 +901,8 @@ export default function Home() {
               <li key={msg.id} className="flex items-center bg-white rounded-lg px-3 py-2 shadow-sm">
                 <span className="w-8 text-center text-xs font-bold text-black">{i + 1}</span>
                 <span className="flex-1 text-sm truncate text-black">
-                  <span className="italic">"{msg.text}"</span>
-                  <span className="ml-2 text-xs text-gray-600">—{msg.name}</span>
+                  <span className="italic">&quot;{msg.text}&quot;</span>
+                  <span className="ml-2 text-xs text-gray-600">&mdash;{msg.name}</span>
                 </span>
                 <button
                   className="ml-2 px-3 py-1 text-xs bg-yellow-400 text-black rounded hover:bg-yellow-300 transition"
