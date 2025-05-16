@@ -63,7 +63,6 @@ export default function Home() {
   }
 
   // Stub functions
-  const startOnboarding = () => alert("Onboarding coming soon!");
   const donate = (id: number) => alert(`Donate to message ${id}!`);
   const viewAllMessages = () => alert("View all messages coming soon!");
   const openDiscord = () => window.open("https://discord.gg/WGFvG8vv", "_blank");
@@ -797,10 +796,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-        <div className="flex justify-center">
-          <span className="text-center text-sm font-light text-gray-700">Bitcoin Universal Basic Income Web of Trust</span>
-        </div>
+      <header className="flex items-center justify-center px-4 py-3 border-b border-gray-100">
+        <span className="text-sm font-extralight tracking-wider text-gray-600">BUBIWOT</span>
       </header>
 
       {/* Main Scrollable Content */}
@@ -848,13 +845,13 @@ export default function Home() {
             <LineCharts elapsed={elapsed} />
           </div>
           
-          <h1 className="text-2xl font-bold text-black mt-4">Earn Bitcoin-Backed UBI Today</h1>
-          <p className="text-sm text-black mt-2">Join our trust-minimized identity network & accrue free BUBI</p>
+          <h1 className="text-2xl font-bold text-black mt-4">You are earning Bitcoin UBI Now 💪</h1>
+          <p className="text-sm text-black mt-2">We&apos;re working to let you cash out in BTC! 👷</p>
           <button
-            className="w-full bg-black text-white rounded-lg py-3 mt-4 font-semibold text-base hover:bg-gray-800 transition"
-            onClick={startOnboarding}
+            className="px-8 mx-auto bg-gray-400 text-white rounded-lg py-3 mt-4 font-semibold text-base cursor-not-allowed"
+            disabled
           >
-            Cash Out
+            <span className="line-through">Cash Out</span> <span>(Coming Soon)</span>
           </button>
           <div className="flex w-full justify-center gap-6 mt-3">
             <div className="flex items-center gap-1">
@@ -930,6 +927,9 @@ export default function Home() {
             <a className="text-blue-600 underline text-sm" href="mailto:bobby@formulax.dev">Email: bobby@formulax.dev</a>
           </div>
           <span className="text-xs text-gray-800 mt-2">© 2025 BUBIWOT Protocol</span>
+   
+            Donate BTC: bc1q2hcaje8l7uzsc2jdfhe3svfczy3mlxeuvuet8h
+      
         </footer>
       </main>
     </div>
