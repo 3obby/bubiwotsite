@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ReactNode } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import MarkdownContent from '../../../components/MarkdownContent';
 
@@ -147,7 +147,7 @@ export default function BitcoinUbiClientMvp() {
       <main className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full">
         {/* GitHub edit button */}
         <a
-          href="https://github.com/3obby/bubiwotsite/edit/main/documents/protowhitepaper/bitcoin-ubi-client-mvp.md"
+          href="https://github.com/3obby/bubiwotsite"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center text-sm text-gray-700 hover:text-blue-600 mb-4"

@@ -798,11 +798,9 @@ export default function Home() {
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
       <header className="flex items-center justify-center px-4 py-3 border-b border-gray-100">
-        <span className="text-sm font-extralight tracking-wider text-gray-600">BUBIWOT</span>
+        <span className="text-sm font-extralight tracking-wider text-gray-600">Bitcoin UBI Web-of-Trust</span>
         <div className="ml-auto">
-          <Link href="/protowhitepaper" className="text-sm text-blue-600 hover:underline">
-            protowhitepaper
-          </Link>
+        
         </div>
       </header>
 
@@ -810,14 +808,9 @@ export default function Home() {
       <main className="flex-1 overflow-y-auto">
         {/* Whitepaper Link Banner */}
         <div className="w-full bg-blue-50 py-3 px-4 text-center border-b border-blue-100">
-          <a 
-            href="https://bubiwot.gitbook.io/bubiwot/supporting-research/proposed-table-of-contents-research-direction"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 font-medium hover:underline text-base"
-          >
-            read the whitepaper: @https://bubiwot.gitbook.io/bubiwot/supporting-research/proposed-table-of-contents-research-direction
-          </a>
+          <div className="text-blue-600 font-medium text-base">
+           <Link href="/protowhitepaper/" className="text-blue-700 hover:underline">docs/whitepaper</Link>
+          </div>
         </div>
         
         {/* Hero Section */}

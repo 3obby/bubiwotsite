@@ -40,7 +40,7 @@ export default function SovereignSocialCreditScore() {
       <main className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full">
         {/* GitHub edit button */}
         <a
-          href="https://github.com/3obby/bubiwotsite/edit/main/documents/protowhitepaper/on-sovereign-social-credit-score.md"
+          href="https://github.com/3obby/bubiwotsite"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center text-sm text-gray-700 hover:text-blue-600 mb-4"

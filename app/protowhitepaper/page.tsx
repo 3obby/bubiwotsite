@@ -23,7 +23,7 @@ export default function ProtoWhitepaper() {
           
           {/* GitHub edit button */}
           <a
-            href="https://github.com/3obby/bubiwotsite/edit/main/documents/protowhitepaper/index.md"
+            href="https://github.com/3obby/bubiwotsite"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center text-sm text-gray-700 hover:text-blue-600 mb-8"
@@ -61,7 +61,7 @@ export default function ProtoWhitepaper() {
             <h2 className="text-lg font-bold mb-2 text-gray-900">about this document</h2>
             <p className="text-gray-800">
               this is a living document that will evolve with the bubiwot protocol. 
-              all community members are encouraged to contribute by using the "edit on github" 
+              all community members are encouraged to contribute by using the &quot;edit on github&quot; 
               link at the top of each page.
             </p>
             
