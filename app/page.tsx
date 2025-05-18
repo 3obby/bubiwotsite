@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import React from "react";
+import Link from "next/link";
 
 export default function Home() {
   // Mock data
@@ -798,6 +799,11 @@ export default function Home() {
       {/* Header */}
       <header className="flex items-center justify-center px-4 py-3 border-b border-gray-100">
         <span className="text-sm font-extralight tracking-wider text-gray-600">BUBIWOT</span>
+        <div className="ml-auto">
+          <Link href="/protowhitepaper" className="text-sm text-blue-600 hover:underline">
+            protowhitepaper
+          </Link>
+        </div>
       </header>
 
       {/* Main Scrollable Content */}
@@ -870,8 +876,16 @@ export default function Home() {
         {/* Video Intro */}
         <section id="video" className="px-4 py-8 bg-gray-50">
           <h2 className="text-lg font-bold mb-3 text-black">What is BUBIWOT?</h2>
-          <div className="w-full rounded-lg overflow-hidden bg-gray-200 flex items-center justify-center" style={{ height: 180 }}>
-            <span className="text-gray-600 font-medium">Video coming soon</span>
+          <div className="w-full flex justify-center">
+            <div className="rounded-lg overflow-hidden shadow-md" style={{ width: "340px", height: "600px", maxWidth: "100%" }}>
+              <iframe 
+                src="https://www.youtube.com/embed/mGxcLAEzRoQ"
+                title="BUBIWOT YouTube video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowFullScreen
+                className="w-full h-full"
+              ></iframe>
+            </div>
           </div>
         </section>
 
