@@ -826,7 +826,7 @@ export default function Home() {
             <span className="block text-red-500 text-xs">Beta: Your Identity/Account is not yet saved</span>
           </div>
           <div className="w-full flex justify-center mb-2">
-            <span className="block text-red-500 text-xs">Beta: This is a vision I, Bobby, am building towards in open collaboration</span>
+            <span className="block text-red-500 text-xs">All accounts have been reset- this will happen often :)</span>
           </div>
           
           {/* Live USD Counter */}
