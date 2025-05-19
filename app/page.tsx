@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import React from "react";
 import Link from "next/link";
+import { Analytics } from "@vercel/analytics/next";
 
 export default function Home() {
   // Mock data
@@ -939,6 +940,7 @@ export default function Home() {
       
         </footer>
       </main>
+      <Analytics />
     </div>
   );
 }
