@@ -276,7 +276,7 @@ export default function ProposedResearchDirection() {
       <main className="flex-1 p-4 md:p-8 max-w-4xl mx-auto w-full">
         {/* GitHub edit button */}
         <a
-          href="https://github.com/3obby/bubiwotsite"
+          href="https://github.com/3obby/bubiwotsite/tree/main/app/protowhitepaper"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center text-sm text-gray-700 hover:text-blue-600 mb-4"

@@ -23,7 +23,7 @@ export default function ProtoWhitepaper() {
           
           {/* GitHub edit button */}
           <a
-            href="https://github.com/3obby/bubiwotsite"
+            href="https://github.com/3obby/bubiwotsite/tree/main/app/protowhitepaper"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center text-sm text-gray-700 hover:text-blue-600 mb-8"
@@ -48,7 +48,11 @@ export default function ProtoWhitepaper() {
               <div className="text-gray-700 ml-4 text-sm">proposed mobile-first banking/attestation</div>
             </div>
             <div className="ml-4">
-              ├── <Link href="/protowhitepaper/economic_web_of_trust" className="text-blue-700 hover:underline">economic_web_of_trust</Link>
+              ├── <Link href="/protowhitepaper/peers_as_keys" className="text-blue-700 hover:underline">peers_as_keys</Link>
+              <div className="text-gray-700 ml-4 text-sm">social/peer irl guardians</div>
+            </div>
+            <div className="ml-4">
+              ├── <Link href="/protowhitepaper/incentivizing_social_graphs" className="text-blue-700 hover:underline">incentivizing_social_graphs</Link>
               <div className="text-gray-700 ml-4 text-sm">economic security model</div>
             </div>
             <div className="ml-4">
@@ -64,6 +68,8 @@ export default function ProtoWhitepaper() {
               all community members are encouraged to contribute by using the &quot;edit on github&quot; 
               link at the top of each page.
             </p>
+
+            
             
             <div className="mt-4">
               <Link 
