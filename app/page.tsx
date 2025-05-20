@@ -71,8 +71,8 @@ export default function Home() {
 
   // Accrual Meter component
   function AccrualMeter({ elapsed }: { elapsed: number }) {
-    const BASE_RATE = 0.0001; // $/sec, consistent with other components
-    const MONTHLY_TARGET = 260; // $/month
+    const BASE_RATE = 0.0001; // ¤/sec, consistent with other components
+    const MONTHLY_TARGET = 260; // ¤/month
 
     // Calculate current value and percentage
     const currentValue = elapsed * BASE_RATE;
@@ -100,7 +100,7 @@ export default function Home() {
             transition={{ duration: 0.15, ease: "easeOut" }}
             className="inline-block"
           >
-            <span className="text-3xl font-bold text-gray-900">~${formattedValue}</span>
+            <span className="text-3xl font-bold text-gray-900">~¤{formattedValue}</span>
             <div className="text-xs text-gray-500 mt-1">Accrued value</div>
           </motion.div>
         </div>
@@ -116,7 +116,7 @@ export default function Home() {
           ></div>
         </div>
         <div className="text-center text-xs text-gray-600 mt-1">
-          {progressPercentage.toFixed(1)}% of ${MONTHLY_TARGET} monthly target
+          {progressPercentage.toFixed(1)}% of ¤{MONTHLY_TARGET} monthly target
         </div>
       </div>
     );
@@ -125,7 +125,7 @@ export default function Home() {
   // Inflation Trend Dashboard component
   function InflationTrendDashboard({ elapsed }: { elapsed: number }) {
     // Constants
-    const BASE_RATE = 0.0001; // $/sec
+    const BASE_RATE = 0.0001; // ¤/sec
     const DAYS_PROJECTION = 30;
     const SECONDS_IN_DAY = 86400;
     const APY = 0.03; // 3%
@@ -316,7 +316,7 @@ export default function Home() {
             >
               <div className="text-gray-600 text-xs">You&apos;ve accrued:</div>
               <div className={`text-2xl sm:text-3xl font-bold ${flash ? "text-blue-500" : "text-black"}`}>
-                ${formattedAccrued}
+                ¤{formattedAccrued}
               </div>
             </motion.div>
           </AnimatePresence>
@@ -331,11 +331,11 @@ export default function Home() {
             </div>
             <div className="bg-white px-3 py-2 rounded-md shadow-sm">
               <span className="text-gray-500">Value:</span>
-              <span className="ml-1 font-medium">${hoveredPoint.value.toFixed(2)}</span>
+              <span className="ml-1 font-medium">¤{hoveredPoint.value.toFixed(2)}</span>
             </div>
             <div className="bg-white px-3 py-2 rounded-md shadow-sm">
               <span className="text-gray-500">Daily:</span>
-              <span className="ml-1 font-medium">${DAILY_RATE.toFixed(4)}</span>
+              <span className="ml-1 font-medium">¤{DAILY_RATE.toFixed(4)}</span>
             </div>
             <div className="bg-white px-3 py-2 rounded-md shadow-sm">
               <span className="text-gray-500">Growth:</span>
@@ -416,7 +416,7 @@ export default function Home() {
                 fill="#6b7280"
                 textAnchor="end"
               >
-                ${(maxValue * ratio).toFixed(2)}
+                ¤{(maxValue * ratio).toFixed(2)}
               </text>
             ))}
             
@@ -479,7 +479,7 @@ export default function Home() {
 
   // Live USD Counter component
   function LiveUsdCounter({ elapsed }: { elapsed: number }) {
-    // Each second, increment by $0.0001
+    // Each second, increment by ¤0.0001
     const base = 0.0001;
     const earned = elapsed * base;
     // Format to 4 decimals, but animate last two
@@ -498,9 +498,9 @@ export default function Home() {
 
     return (
       <div className="w-full max-w-md mx-auto flex flex-col items-center justify-center text-xs text-gray-800 my-3 select-none">
-        <div className="mb-1 text-xs text-gray-600">Your Bitcoin UBI Earned:</div>
+        <div className="mb-1 text-xs text-gray-600">₿UBI:</div>
         <div className="flex items-center">
-          <span className="font-mono text-lg sm:text-xl font-semibold text-black">$</span>
+          <span className="font-mono text-sm font-medium text-gray-700 mr-0.5">¤</span>
           <span className="font-mono text-lg sm:text-xl font-semibold text-black">{main}</span>
           <AnimatePresence mode="wait" initial={false}>
             <motion.span
@@ -522,8 +522,8 @@ export default function Home() {
   function LineCharts({ elapsed }: { elapsed: number }) {
     // Constants
     const SECONDS = 300; // 5 min window
-    const USER_RATE = 0.0001; // $/sec
-    const ECOSYSTEM_RATE = 0.001; // $/sec (example, can be changed)
+    const USER_RATE = 0.0001; // ¤/sec
+    const ECOSYSTEM_RATE = 0.001; // ¤/sec (example, can be changed)
     const INFLATION = 0.03; // 3% annual
     const WIDTH = 180;
     const HEIGHT = 80;
@@ -869,15 +869,18 @@ export default function Home() {
 
         {/* Video Intro */}
         <section id="video" className="px-4 py-8 bg-gray-50">
-          <h2 className="text-lg font-bold mb-3 text-black">What is BUBIWOT?</h2>
+          <h2 className="text-lg font-bold mb-3 text-black">Bitcoin UBI Overview</h2>
           <div className="w-full flex justify-center">
-            <div className="rounded-lg overflow-hidden shadow-md" style={{ width: "340px", height: "600px", maxWidth: "100%" }}>
+            <div className="rounded-lg overflow-hidden shadow-md">
               <iframe 
-                src="https://www.youtube.com/embed/mGxcLAEzRoQ"
-                title="BUBIWOT YouTube video"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                width="560" 
+                height="315" 
+                src="https://www.youtube.com/embed/ElVAnOK_zQI?si=CguLEdJw9D_80t5w"
+                title="YouTube video player" 
+                frameBorder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                referrerPolicy="strict-origin-when-cross-origin" 
                 allowFullScreen
-                className="w-full h-full"
               ></iframe>
             </div>
           </div>
@@ -888,10 +891,23 @@ export default function Home() {
           <h2 className="text-lg font-bold mb-3 text-black">Get Involved</h2>
           <ul className="flex flex-col gap-3">
             {tasks.map((task) => (
-              <li key={task.id} className="flex items-center bg-gray-100 rounded-lg px-3 py-2">
+              <li 
+                key={task.id} 
+                className={`flex items-center bg-gray-100 rounded-lg px-3 py-2 ${task.title === "Join Discord" ? "cursor-pointer hover:bg-gray-200" : ""}`}
+                onClick={task.title === "Join Discord" ? openDiscord : undefined}
+              >
                 <span className="flex-1 text-sm text-black">{task.title}</span>
-                <div className="ml-2 px-3 py-1 text-xs bg-gray-300 text-gray-700 rounded transition cursor-default">
-                  Reward coming soon
+                {task.title === "Join Discord" && (
+                  <svg 
+                    className="h-5 w-5 mr-2 text-indigo-500" 
+                    fill="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M20.317 4.492c-1.53-.69-3.17-1.2-4.885-1.49a.075.075 0 0 0-.079.036c-.21.39-.444.906-.608 1.31a16.98 16.98 0 0 0-5.092 0c-.164-.404-.4-.92-.61-1.31a.077.077 0 0 0-.079-.036c-1.714.29-3.354.8-4.885 1.49a.07.07 0 0 0-.032.027C.533 9.093-.32 13.555.099 17.961a.08.08 0 0 0 .031.055c1.994 1.465 3.922 2.355 5.803 2.945a.082.082 0 0 0 .089-.028c.39-.53.739-1.09 1.039-1.675a.075.075 0 0 0-.041-.106 11.95 11.95 0 0 1-1.708-.817.075.075 0 0 1-.007-.125c.114-.086.228-.176.336-.267a.075.075 0 0 1 .079-.01c3.954 1.809 8.232 1.809 12.143 0a.075.075 0 0 1 .08.01c.108.091.222.182.337.267a.075.075 0 0 1-.007.125c-.545.308-1.113.588-1.709.818a.075.075 0 0 0-.041.106c.305.581.654 1.142 1.038 1.675a.076.076 0 0 0 .089.028c1.88-.59 3.809-1.48 5.804-2.945a.077.077 0 0 0 .03-.055c.5-5.177-.838-9.596-3.549-13.442a.06.06 0 0 0-.031-.027zM8.02 15.278c-1.144 0-2.089-1.055-2.089-2.345 0-1.29.924-2.344 2.089-2.344 1.174 0 2.09 1.064 2.074 2.344 0 1.29-.925 2.345-2.075 2.345zm7.676 0c-1.145 0-2.09-1.055-2.09-2.345 0-1.29.925-2.344 2.09-2.344 1.174 0 2.09 1.064 2.073 2.344 0 1.29-.925 2.345-2.074 2.345z"/>
+                  </svg>
+                )}
+                <div className="px-3 py-1 text-xs bg-gray-300 text-gray-700 rounded transition cursor-default">
+                  Reward: 0 BUBI
                 </div>
               </li>
             ))}
