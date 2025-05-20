@@ -815,7 +815,7 @@ export default function Home() {
   const [tasks] = useState([
     { id: 1, title: "Verify your humanity" },
     { id: 2, title: "Invite a friend" },
-    { id: 3, title: "Join Discord to ask questions to Bobby/others" },
+    { id: 3, title: "Join Discord! Let's talk about Bitcoin UBI" },
   ]);
   const [messages] = useState([
     { id: 1, text: "for free speech", name: "Bobby", total_sats: 1000000 },
@@ -904,12 +904,19 @@ export default function Home() {
           </button>
           <div className="flex w-full justify-center gap-6 mt-3">
             <div className="flex items-center gap-1">
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 20h5v-2a4 4 0 0 0-3-3.87"/><path d="M9 20H4v-2a4 4 0 0 1 3-3.87"/><circle cx="12" cy="7" r="4"/></svg>
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M17 20h5v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M9 20H4v-2a4 4 0 0 1 3-3.87"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
               <span className="text-xs text-black">Joined</span>
               <span className="ml-1 font-semibold text-xs text-black">{userCount}</span>
             </div>
             <div className="flex items-center gap-1">
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M16 13a4 4 0 1 0-8 0v5a4 4 0 1 0 8 0v-5z"/><circle cx="12" cy="7" r="4"/></svg>
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M16 13a4 4 0 1 0-8 0v5a4 4 0 1 0 8 0v-5z"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
               <span className="text-xs text-black">Total</span>
               <span className="ml-1 font-semibold text-xs text-black">{totalBubi} BUBI</span>
             </div>
@@ -931,11 +938,11 @@ export default function Home() {
             {tasks.map((task) => (
               <li 
                 key={task.id} 
-                className={`flex items-center bg-gray-100 rounded-lg px-3 py-2 ${task.title === "Join Discord" ? "cursor-pointer hover:bg-gray-200" : ""}`}
-                onClick={task.title === "Join Discord" ? openDiscord : undefined}
+                className={`flex items-center bg-gray-100 rounded-lg px-3 py-2 ${task.title.includes("Join Discord") ? "cursor-pointer hover:bg-gray-200" : ""}`}
+                onClick={task.title.includes("Join Discord") ? openDiscord : undefined}
               >
                 <span className="flex-1 text-sm text-black">{task.title}</span>
-                {task.title === "Join Discord" && (
+                {task.title.includes("Join Discord") && (
                   <svg 
                     className="h-5 w-5 mr-2 text-indigo-500" 
                     fill="currentColor" 
