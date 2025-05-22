@@ -747,44 +747,68 @@ function LineCharts({ elapsed }: { elapsed: number }) {
   );
 }
 
-// YouTube Video Component with loading spinner
-const YouTubeVideo = React.memo(function YouTubeVideo() {
+// YouTube Video Card Component (refactored for props and mobile design)
+const YouTubeVideoCard = React.memo(function YouTubeVideoCard({ title, videoId, link, isShort }: { title: string; videoId: string; link: string; isShort?: boolean }) {
   const [isLoading, setIsLoading] = useState(true);
-  const videoId = "ElVAnOK_zQI"; // Extracted video ID
-  const youtubeWatchLink = `https://www.youtube.com/watch?v=${videoId}`;
-    
+  // Shorts use a different embed URL
+  const embedUrl = isShort
+    ? `https://www.youtube.com/embed/${videoId}?autoplay=0&modestbranding=1&rel=0&showinfo=0&controls=1&loop=0&playlist=${videoId}`
+    : `https://www.youtube.com/embed/${videoId}`;
   return (
-    <div className="w-full relative">
-      <div className="aspect-video w-full bg-gray-100 rounded-lg overflow-hidden shadow-md">
+    <div className="w-full max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden mb-6 flex flex-col border border-gray-100">
+      <div className="aspect-video w-full bg-gray-100 relative">
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-            <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
+            <div className="w-10 h-10 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin"></div>
           </div>
         )}
-        <iframe 
+        <iframe
           className="w-full h-full absolute top-0 left-0"
-          src={`https://www.youtube.com/embed/${videoId}?si=CguLEdJw9D_80t5w`}
-          title="YouTube video player" 
-          frameBorder="0" 
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-          referrerPolicy="strict-origin-when-cross-origin" 
+          src={embedUrl}
+          title={title}
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerPolicy="strict-origin-when-cross-origin"
           allowFullScreen
           onLoad={() => setIsLoading(false)}
         ></iframe>
       </div>
-      <div className="text-center mt-2">
-        <a 
-          href={youtubeWatchLink}
-          target="_blank" 
+      <div className="flex flex-col items-center justify-center px-4 py-3">
+        <div className="font-semibold text-base text-gray-900 text-center mb-1 leading-tight">{title}</div>
+        <a
+          href={link}
+          target="_blank"
           rel="noopener noreferrer"
-          className="text-sm text-blue-600 hover:underline"
+          className="text-xs text-blue-600 hover:underline text-center break-all"
         >
-          Watch on YouTube: {youtubeWatchLink}
+          Watch on YouTube
         </a>
       </div>
     </div>
   );
 });
+
+// Video Section with two videos, mobile-optimized
+function VideoSection() {
+  return (
+    <section id="video" className="px-2 sm:px-4 py-8 bg-gray-50">
+      <h2 className="text-lg font-bold mb-4 text-black text-center">Featured Videos</h2>
+      <div className="flex flex-col gap-4 w-full max-w-2xl mx-auto">
+        <YouTubeVideoCard
+          title="social x economic identity"
+          videoId="AEoTS5U-KeI"
+          link="https://www.youtube.com/shorts/AEoTS5U-KeI"
+          isShort={true}
+        />
+        <YouTubeVideoCard
+          title="Bitcoin UBI Playbook (wip)"
+          videoId="WbbIzGQcGdU"
+          link="https://www.youtube.com/watch?v=WbbIzGQcGdU"
+        />
+      </div>
+    </section>
+  );
+}
 
 // Finance Dashboard component
 function FinanceDashboard({ elapsed }: { elapsed: number }) {
@@ -923,13 +947,8 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Video Intro */}
-        <section id="video" className="px-4 py-8 bg-gray-50">
-          <h2 className="text-lg font-bold mb-3 text-black">Bitcoin UBI Overview</h2>
-          <div className="w-full max-w-2xl mx-auto">
-            <YouTubeVideo />
-          </div>
-        </section>
+        {/* Video Section (replaces old video section) */}
+        <VideoSection />
 
         {/* Quick Tasks */}
         <section id="tasks" className="px-4 py-8">
