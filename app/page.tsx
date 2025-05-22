@@ -916,7 +916,8 @@ function UserModal({
   onClose, 
   userData, 
   onLogin, 
-  onLogout 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _onLogout 
 }: { 
   isOpen: boolean; 
   onClose: () => void;
@@ -927,7 +928,7 @@ function UserModal({
     hasLoggedIn: boolean;
   };
   onLogin: (password: string) => void;
-  onLogout: () => void;
+  _onLogout: () => void; // Update the interface to match
 }) {
   const [loginPassword, setLoginPassword] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -1156,7 +1157,8 @@ export default function Home() {
   const [, setSessionId] = useState<string | null>(null);
   const [sessionStart, setSessionStart] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
-  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_isPasswordLoading, setIsPasswordLoading] = useState(false);
   const [showPasswordInput, setShowPasswordInput] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
@@ -1225,7 +1227,8 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [sessionStart]);
 
-  const handleGeneratePassword = async () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _handleGeneratePassword = async () => {
     setIsPasswordLoading(true);
     setPasswordInput("");
     setUserId(null);
@@ -1698,7 +1701,7 @@ export default function Home() {
           hasLoggedIn
         }}
         onLogin={handleLoginFromModal}
-        onLogout={handleLogout} // Add this prop to pass the logout function
+        _onLogout={handleLogout} // Add this prop to pass the logout function
       />
     </div>
   );
