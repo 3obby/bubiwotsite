@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import React from "react";
 import Link from "next/link";
@@ -55,6 +55,15 @@ function AccrualMeter({ elapsed }: { elapsed: number }) {
           <span className="text-3xl font-bold text-gray-900">~¤{formattedValue}</span>
           <div className="text-xs text-gray-500 mt-1">Accrued value</div>
         </motion.div>
+      </div>
+      
+      <div className="text-center mb-3">
+        <button
+          className="px-6 py-2 text-sm bg-gray-300 text-gray-700 rounded-md cursor-not-allowed"
+          disabled
+        >
+          Send
+        </button>
       </div>
       
       {/* Progress bar */}
@@ -810,6 +819,304 @@ function VideoSection() {
   );
 }
 
+// Login Modal Component
+function LoginModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const [loginPassword, setLoginPassword] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoggingIn(true);
+    
+    try {
+      const response = await fetch('/api/account/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password: loginPassword }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+      
+      // Store user data in localStorage
+      localStorage.setItem('bubiwot_user_id', data.userId);
+      localStorage.setItem('bubiwot_user_alias', data.alias);
+      localStorage.setItem('bubiwot_user_password', loginPassword);
+      
+      // Reload to update UI
+      window.location.reload();
+      
+      setLoginPassword("");
+      onClose();
+    } catch (error) {
+      console.error("Login failed:", error);
+      alert(`Login failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-800">Login</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label htmlFor="recoveryKey" className="block text-sm font-medium text-gray-700 mb-1">
+              Recovery Key / Password
+            </label>
+            <input
+              type="password"
+              id="recoveryKey"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
+              placeholder="Enter your key"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={isLoggingIn}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition flex items-center justify-center"
+          >
+            {isLoggingIn ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Logging in...
+              </>
+            ) : (
+              "Recover Account"
+            )}
+          </button>
+        </form>
+        <p className="text-xs text-gray-500 mt-3 text-center">
+          Account recovery is under development.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// User Modal Component
+function UserModal({ 
+  isOpen, 
+  onClose, 
+  userData, 
+  onLogin, 
+  onLogout 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void;
+  userData: {
+    userId: string;
+    alias: string;
+    password: string;
+    hasLoggedIn: boolean;
+  };
+  onLogin: (password: string) => void;
+  onLogout: () => void;
+}) {
+  const [loginPassword, setLoginPassword] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+  const [localPassword, setLocalPassword] = useState("");
+  
+  // Animation for strobing effect
+  const [isStrobing, setIsStrobing] = useState(false);
+  
+  // Set up strobing animation if user hasn't logged in
+  useEffect(() => {
+    if (!userData.hasLoggedIn && isOpen) {
+      const interval = setInterval(() => {
+        setIsStrobing(prev => !prev);
+      }, 700); // Toggle every 700ms
+      
+      return () => clearInterval(interval);
+    }
+  }, [userData.hasLoggedIn, isOpen]);
+  
+  // Update local password when userData changes
+  useEffect(() => {
+    if (userData.password) {
+      setLocalPassword(userData.password);
+    }
+  }, [userData.password]);
+  
+  if (!isOpen) return null;
+  
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoggingIn(true);
+    
+    try {
+      await onLogin(loginPassword);
+      setLoginPassword("");
+    } catch (error) {
+      console.error("Login failed:", error);
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+  
+  const handleCopyPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(localPassword);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy to clipboard:", error);
+      
+      // Fallback method if clipboard API fails
+      const textArea = document.createElement("textarea");
+      textArea.value = localPassword;
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand("copy");
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      } catch (err) {
+        console.error("Fallback copy failed:", err);
+        alert("Failed to copy to clipboard. Please copy manually.");
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+  
+  const handleRandomizePassword = async () => {
+    try {
+      const response = await fetch('/api/account/create', { method: 'POST' });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      if (data.password) {
+        setLocalPassword(data.password);
+      }
+    } catch (error) {
+      console.error("Failed to randomize password:", error);
+    }
+  };
+  
+  const handleClearPassword = () => {
+    setLocalPassword("");
+  };
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-800">Account Details</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+        </div>
+        
+        {/* User Info Section */}
+        <div className="mb-6 p-4 bg-gray-50 rounded-md">
+          <div className="grid grid-cols-4 gap-2 mb-3">
+            <span className="text-sm font-medium text-gray-600 col-span-1">User ID:</span>
+            <span className="text-sm text-gray-800 col-span-3 font-mono break-all">{userData.userId}</span>
+          </div>
+          <div className="grid grid-cols-4 gap-2 mb-3">
+            <span className="text-sm font-medium text-gray-600 col-span-1">Alias:</span>
+            <span className="text-sm text-gray-800 col-span-3">{userData.alias}</span>
+          </div>
+          
+          {/* Password section with buttons */}
+          <div className={`rounded p-2 ${!userData.hasLoggedIn && isStrobing ? 'bg-yellow-100' : ''}`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-600">Password:</span>
+              <div className="flex gap-1">
+                <button 
+                  onClick={handleRandomizePassword}
+                  className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 flex items-center"
+                  title="Generate new password"
+                >
+                  <span>🔄</span>
+                </button>
+                <button 
+                  onClick={handleCopyPassword}
+                  className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center min-w-[60px]"
+                  title="Copy to clipboard"
+                >
+                  {isCopied ? "Copied!" : "Copy"}
+                </button>
+                <button 
+                  onClick={handleClearPassword}
+                  className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 flex items-center"
+                  title="Clear password"
+                >
+                  <span>✕</span>
+                </button>
+              </div>
+            </div>
+            <div className="text-sm text-gray-800 font-mono break-all bg-white p-2 rounded border border-gray-200 min-h-[2.5rem]">
+              {localPassword}
+            </div>
+          </div>
+          
+          {!userData.hasLoggedIn && (
+            <div className="mt-3 text-xs text-yellow-600 flex items-center">
+              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              This account has never been used to login
+            </div>
+          )}
+        </div>
+        
+        {/* Login Form */}
+        <form onSubmit={handleSubmit} className="mt-4">
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Login with Password
+            </label>
+            <div className={`flex ${!userData.hasLoggedIn && isStrobing ? 'bg-yellow-100' : ''} rounded`}>
+              <input
+                type="password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-black"
+                placeholder="Enter your password"
+              />
+            </div>
+          </div>
+          <button
+            type="submit"
+            disabled={isLoggingIn || !loginPassword}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition flex items-center justify-center disabled:bg-blue-300"
+          >
+            {isLoggingIn ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Logging in...
+              </>
+            ) : (
+              "Login"
+            )}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // Finance Dashboard component
 function FinanceDashboard({ elapsed }: { elapsed: number }) {
   return (
@@ -834,7 +1141,7 @@ function FinanceDashboard({ elapsed }: { elapsed: number }) {
 
 export default function Home() {
   // Mock data
-  const [userCount] = useState("???");
+  const [userCount, setUserCount] = useState(0);
   const [totalBubi] = useState("???");
   const [tasks] = useState([
     { id: 1, title: "Verify your humanity" },
@@ -849,7 +1156,20 @@ export default function Home() {
   const [, setSessionId] = useState<string | null>(null);
   const [sessionStart, setSessionStart] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
-
+  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
+  const [showPasswordInput, setShowPasswordInput] = useState(false);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [alias, setAlias] = useState("anon");
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [importPassword, setImportPassword] = useState("");
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userPassword, setUserPassword] = useState("");
+  const [hasLoggedIn, setHasLoggedIn] = useState(false);
+  
   // On mount, initialize session ID and start time from localStorage or set new
   useEffect(() => {
     let sid = localStorage.getItem('bubiwot_session_id');
@@ -864,7 +1184,37 @@ export default function Home() {
     }
     setSessionId(sid);
     setSessionStart(Number(sstart));
+    
+    // Check if user is logged in
+    const storedUserId = localStorage.getItem('bubiwot_user_id');
+    const storedAlias = localStorage.getItem('bubiwot_user_alias');
+    const storedPassword = localStorage.getItem('bubiwot_user_password');
+    const storedHasLoggedIn = localStorage.getItem('bubiwot_user_has_logged_in');
+    
+    if (storedUserId && storedAlias && storedPassword) {
+      setUserId(storedUserId);
+      setAlias(storedAlias);
+      setUserPassword(storedPassword);
+      setHasLoggedIn(storedHasLoggedIn === 'true');
+      setIsLoggedIn(true);
+    }
+    
+    // Fetch user count
+    fetchUserCount();
   }, []);
+  
+  // Fetch user count
+  const fetchUserCount = async () => {
+    try {
+      const response = await fetch('/api/account/count');
+      if (response.ok) {
+        const data = await response.json();
+        setUserCount(data.count);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user count:", error);
+    }
+  };
 
   // Timer interval
   useEffect(() => {
@@ -875,18 +1225,224 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [sessionStart]);
 
+  const handleGeneratePassword = async () => {
+    setIsPasswordLoading(true);
+    setPasswordInput("");
+    setUserId(null);
+    setAlias("anon");
+    
+    try {
+      const response = await fetch('/api/account/create', { method: 'POST' });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      if (data.password && data.userId) {
+        setPasswordInput(data.password);
+        setUserId(data.userId);
+        if (data.alias) {
+          setAlias(data.alias);
+        }
+        // Set hasLoggedIn to false for new accounts
+        setHasLoggedIn(false);
+        setShowPasswordInput(true);
+      }
+    } catch (error) {
+      console.error("Failed to generate password:", error);
+      alert(`Error: ${error instanceof Error ? error.message : "Could not generate password."}`);
+    } finally {
+      setIsPasswordLoading(false);
+    }
+  };
+
+  const handleRandomizePassword = async () => {
+    try {
+      const response = await fetch('/api/account/create', { method: 'POST' });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      if (data.password) {
+        setPasswordInput(data.password);
+        setUserId(data.userId);
+        if (data.alias) {
+          setAlias(data.alias);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to randomize password:", error);
+    }
+  };
+  
+  const handleCopyPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(passwordInput);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy to clipboard:", error);
+      
+      // Fallback method if clipboard API fails
+      const textArea = document.createElement("textarea");
+      textArea.value = passwordInput;
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand("copy");
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      } catch (err) {
+        console.error("Fallback copy failed:", err);
+        alert("Failed to copy to clipboard. Please copy manually.");
+      }
+      document.body.removeChild(textArea);
+    }
+  };
+  
+  const handleCreateWithExistingPassword = async () => {
+    if (!importPassword.trim()) {
+      alert("Please enter a password");
+      return;
+    }
+    
+    setIsCreatingAccount(true);
+    
+    try {
+      const response = await fetch('/api/account/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password: importPassword }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create account');
+      }
+      
+      setPasswordInput(data.password);
+      setUserId(data.userId);
+      if (data.alias) {
+        setAlias(data.alias);
+      }
+      
+      // Store user data in localStorage
+      localStorage.setItem('bubiwot_user_id', data.userId);
+      localStorage.setItem('bubiwot_user_alias', data.alias);
+      localStorage.setItem('bubiwot_user_password', data.password);
+      localStorage.setItem('bubiwot_user_has_logged_in', 'false'); // New account hasn't logged in yet
+      
+      setImportPassword("");
+      setIsLoggedIn(true);
+      setUserPassword(data.password);
+      setHasLoggedIn(false);
+      
+      // Refresh user count
+      fetchUserCount();
+      
+      alert(`Account created successfully! User ID: ${data.userId}`);
+    } catch (error) {
+      console.error("Failed to create account:", error);
+      alert(`Error: ${error instanceof Error ? error.message : "Could not create account."}`);
+    } finally {
+      setIsCreatingAccount(false);
+    }
+  };
+
+  const handleClosePasswordInput = () => {
+    setShowPasswordInput(false);
+  };
+  
+  const handleLogout = () => {
+    // Clear user data from localStorage
+    localStorage.removeItem('bubiwot_user_id');
+    localStorage.removeItem('bubiwot_user_alias');
+    localStorage.removeItem('bubiwot_user_password');
+    localStorage.removeItem('bubiwot_user_has_logged_in');
+    
+    // Reset state
+    setUserId(null);
+    setAlias("anon");
+    setUserPassword("");
+    setHasLoggedIn(false);
+    setIsLoggedIn(false);
+    
+    // Close modal if open
+    setShowUserModal(false);
+  };
+
   // Stub functions
   const donate = (id: number) => alert(`Donate to message ${id}!`);
   const viewAllMessages = () => alert("View all messages coming soon!");
   const openDiscord = () => window.open("https://discord.gg/WGFvG8vv", "_blank");
+  const openLoginModal = () => setShowLoginModal(true);
+  const closeLoginModal = () => setShowLoginModal(false);
+
+  const handleLoginFromModal = async (password: string) => {
+    try {
+      const response = await fetch('/api/account/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+      
+      // Update localStorage
+      localStorage.setItem('bubiwot_user_id', data.userId);
+      localStorage.setItem('bubiwot_user_alias', data.alias);
+      localStorage.setItem('bubiwot_user_password', password);
+      localStorage.setItem('bubiwot_user_has_logged_in', 'true');
+      
+      // Update state
+      setUserId(data.userId);
+      setAlias(data.alias);
+      setUserPassword(password);
+      setHasLoggedIn(true);
+      setIsLoggedIn(true);
+      
+      // Close modal
+      setShowUserModal(false);
+      
+      // Show success message
+      alert("Login successful!");
+    } catch (error) {
+      console.error("Login failed:", error);
+      alert(`Login failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  };
+  
+  const openUserModal = () => setShowUserModal(true);
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
-      <header className="flex items-center justify-center px-4 py-3 border-b border-gray-100">
+      <header className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
         <span className="text-sm font-extralight tracking-wider text-gray-600">Bitcoin UBI Web-of-Trust</span>
         <div className="ml-auto">
-        
+          {!isLoggedIn ? (
+            <button onClick={openLoginModal} className="text-sm text-blue-600 hover:underline">
+              Login
+            </button>
+          ) : (
+            <button 
+              onClick={openUserModal} 
+              className="text-sm text-green-600 hover:underline cursor-pointer"
+            >
+              {alias}
+            </button>
+          )}
         </div>
       </header>
 
@@ -899,24 +1455,132 @@ export default function Home() {
           </div>
         </div>
         
+        {/* User Info Section - Removed as requested */}
+        
         {/* Hero Section */}
         <section id="hero" className="px-4 py-8 flex flex-col items-center text-center">
-          {/* Session Timer Bar */}
-          <div className="w-full flex justify-center mb-2">
+          {/* Account Label */}
+          <div className="w-full flex justify-center mb-1">
+            <div className="bg-purple-100 text-purple-800 text-xs font-medium rounded-full px-3 py-1 shadow-sm">
+              {userId ? alias : "New Account"}
+            </div>
+          </div>
+          
+          {/* Session Timer and User Count */}
+          <div className="w-full flex flex-col items-center gap-1 mb-2">
             <div className="bg-gray-100 text-xs text-gray-800 rounded-full px-3 py-1 shadow-sm min-w-[120px] max-w-xs truncate">
               Session: {formatElapsed(elapsed)}
             </div>
+            <div className="text-xs text-gray-700">
+              Users: {userCount}
+            </div>
           </div>
-          {/* Beta Notice */}
-          <div className="w-full flex justify-center mb-2">
-            <span className="block text-red-500 text-xs">Beta: Your Identity/Account is not yet saved</span>
-          </div>
-          <div className="w-full flex justify-center mb-2">
-            <span className="block text-red-500 text-xs">All accounts have been reset- this will happen often :)</span>
-          </div>
+          
+          {/* Beta Notice Section - Hide if account has logged in */}
+          {(!isLoggedIn || !hasLoggedIn) && (
+            <div className="w-full max-w-md mx-auto bg-red-50 p-3 rounded-lg my-3 border border-red-200">
+              <div className="w-full flex justify-center mb-1">
+                <span className="block text-red-600 text-xs font-medium">Beta: Your Identity/Account is not yet saved permanently without manual steps.</span>
+              </div>
+              <div className="w-full flex justify-center mb-2">
+                <span className="block text-red-600 text-xs">All accounts may be reset during beta - this will happen often :)</span>
+              </div>
+              
+              {!showPasswordInput ? (
+                <div className="w-full flex justify-center">
+                  {/* <button
+                    onClick={handleGeneratePassword}
+                    disabled={isPasswordLoading}
+                    className="px-4 py-2 text-sm bg-yellow-400 text-black rounded-md hover:bg-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {isPasswordLoading ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Generating...
+                      </>
+                    ) : (
+                      "Save & Copy Password"
+                    )}
+                  </button> */}
+                </div>
+              ) : (
+                <div className="w-full">
+                  <div className="text-left mb-1">
+                    <label className="block text-sm font-medium text-gray-700">Password:</label>
+                  </div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={passwordInput}
+                      onChange={(e) => setPasswordInput(e.target.value)}
+                      className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:border-yellow-300 text-black"
+                    />
+                    <button
+                      onClick={handleCopyPassword}
+                      className="px-2 py-2 text-xs bg-blue-500 text-white rounded-md hover:bg-blue-600 min-w-[60px]"
+                    >
+                      {isCopied ? "Copied!" : "Copy"}
+                    </button>
+                    <button
+                      onClick={handleRandomizePassword}
+                      className="px-2 py-2 text-xs bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                    >
+                      🔄
+                    </button>
+                    <button
+                      onClick={handleClosePasswordInput}
+                      className="px-2 py-2 text-xs bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="text-left mt-1 text-xs text-gray-600">
+                    <span>Alias: {alias}</span>
+                  </div>
+                  
+                  {/* Create Account with existing password section */}
+                  <div className="mt-4 pt-3 border-t border-red-200">
+                    <div className="text-left mb-1">
+                      <label className="block text-sm font-medium text-gray-700">Password?:</label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={importPassword}
+                        onChange={(e) => setImportPassword(e.target.value)}
+                        placeholder="Paste an existing password"
+                        className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-300 focus:border-yellow-300 text-black"
+                      />
+                      <button
+                        onClick={handleCreateWithExistingPassword}
+                        disabled={isCreatingAccount}
+                        className="whitespace-nowrap px-3 py-2 text-xs bg-green-500 text-white rounded-md hover:bg-green-600 disabled:bg-green-300 disabled:cursor-not-allowed flex items-center"
+                      >
+                        {isCreatingAccount ? (
+                          <>
+                            <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Creating...
+                          </>
+                        ) : (
+                          "Create Account"
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           
           {/* Finance Dashboard Component */}
           <FinanceDashboard elapsed={elapsed} />
+          
           
           <h1 className="text-2xl font-bold text-black mt-4">You are earning Bitcoin UBI Now 💪</h1>
           <p className="text-sm text-black mt-2">We&apos;re working to let you cash out in BTC! 👷</p>
@@ -1012,6 +1676,9 @@ export default function Home() {
         <footer className="px-4 py-8 flex flex-col items-center text-center gap-2">
           <div className="flex gap-4 mb-2">
             <a className="text-blue-600 underline text-sm" href="mailto:bobby@formulax.dev">bobby@formulax.dev</a>
+            <button onClick={openLoginModal} className="text-sm text-blue-600 hover:underline">
+              Login / Recover Account
+            </button>
           </div>
           <span className="text-xs text-gray-800 mt-2">© 2025 BUBIWOT Protocol</span>
           <span className="text-xs text-gray-700 mt-1">
@@ -1020,6 +1687,19 @@ export default function Home() {
         </footer>
       </main>
       <Analytics />
+      <LoginModal isOpen={showLoginModal} onClose={closeLoginModal} />
+      <UserModal 
+        isOpen={showUserModal} 
+        onClose={() => setShowUserModal(false)} 
+        userData={{
+          userId: userId || "",
+          alias,
+          password: userPassword,
+          hasLoggedIn
+        }}
+        onLogin={handleLoginFromModal}
+        onLogout={handleLogout} // Add this prop to pass the logout function
+      />
     </div>
   );
 }
