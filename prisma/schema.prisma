@@ -9,10 +9,64 @@ generator client {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  password  String
-  alias     String   @default("anon")
-  hasLoggedIn Boolean @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  password    String
+  alias       String   @default("anon")
+  hasLoggedIn Boolean  @default(false)
+  credits     Decimal  @default(0.000777) @db.Decimal(12,8) // 8 decimal places with default 0.000777
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  burnedCredits BurnedCredit[] // Relation to credits burned by this user
+  transactions TransactionRecord[] // Relation to transaction records
+}
+
+// Track burned credits for transparency
+model BurnedCredit {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  amount      Decimal  @db.Decimal(12,8) // Amount burned
+  action      String   // What the credit was used for (e.g., "rename", "login")
+  balanceBefore Decimal @db.Decimal(12,8) // Balance before the burn
+  balanceAfter  Decimal @db.Decimal(12,8) // Balance after the burn
+  createdAt   DateTime @default(now())
+  
+  // Reference to global token balance when this credit was burned
+  globalBalanceId String?
+  globalBalance   GlobalTokenBalance? @relation(fields: [globalBalanceId], references: [id])
+  
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Track transaction history for complete auditability
+model TransactionRecord {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  transactionType String    // Type of transaction (e.g., "manual-save", "fund-account", "rename")
+  amount          Decimal   @db.Decimal(12,8) // Net amount involved in the transaction
+  balanceBefore   Decimal   @db.Decimal(12,8) // Credits balance before transaction
+  balanceAfter    Decimal   @db.Decimal(12,8) // Credits balance after transaction
+  metadata        Json?     // Additional metadata about the transaction
+  createdAt       DateTime  @default(now())
+  
+  @@index([userId])
+  @@index([transactionType])
+  @@index([createdAt])
+}
+
+// Track global token balance for the entire system
+// Updated periodically (hourly) rather than for every transaction
+model GlobalTokenBalance {
+  id              String   @id @default(cuid())
+  totalIssued     Decimal  @default(0) @db.Decimal(28,8) // Total tokens issued globally - increased for trillion token support
+  totalBurned     Decimal  @default(0) @db.Decimal(28,8) // Total tokens burned
+  circulating     Decimal  @default(0) @db.Decimal(28,8) // Currently in circulation (issued - burned)
+  timestamp       DateTime @default(now())
+  
+  // Records of burned credits that happened at this balance point
+  burnedCredits   BurnedCredit[]
+  
+  @@index([timestamp])
 }
