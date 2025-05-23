@@ -16,7 +16,10 @@
     "@prisma/client": "^6.8.2",
     "@prisma/server": "^0.0.0",
     "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
     "@vercel/analytics": "^1.5.0",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.2",
     "framer-motion": "^12.12.1",
     "gray-matter": "^4.0.3",
     "katex": "^0.16.22",
@@ -32,12 +35,9 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/typography": "^0.5.10",
-    "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/react-syntax-highlighter": "^15.5.13",
-    "eslint": "^9",
-    "eslint-config-next": "15.3.2",
     "prisma": "^6.8.2",
     "tailwindcss": "^4",
     "typescript": "^5"
