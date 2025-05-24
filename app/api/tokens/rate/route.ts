@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { PrismaClient } from '@prisma/client';
 
 // Base rate: ¤0.0001 per second
 const BASE_RATE = 0.0001;

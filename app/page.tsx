@@ -642,7 +642,7 @@ export default function Home() {
   const updateLifetimeMetrics = (newMetrics: {
     allocated: number;
     collected: number;
-    burned: number;
+    burned?: number;
     collectionPercentage: number;
   }) => {
     const safeMetrics = {
@@ -891,7 +891,7 @@ export default function Home() {
     const interval = setInterval(checkNetworkStatus, 30000);
     
     return () => clearInterval(interval);
-  }, [checkNetworkStatus]);
+  }, [checkNetworkStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close network stats dropdown when clicking outside
   useEffect(() => {

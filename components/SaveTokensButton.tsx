@@ -19,7 +19,6 @@ interface SaveTokensButtonProps {
 
 export default function SaveTokensButton({ onTokensUpdated, compact = false }: SaveTokensButtonProps) {
   const [tokenStatus, setTokenStatus] = useState<TokenStatus | null>(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
@@ -115,14 +114,6 @@ export default function SaveTokensButton({ onTokensUpdated, compact = false }: S
     const interval = setInterval(fetchTokenStatus, 10000);
     return () => clearInterval(interval);
   }, []);
-
-  if (loading) {
-    return compact ? (
-      <div className="text-sm text-gray-500">...</div>
-    ) : (
-      <div className="text-center py-4 text-gray-500">Loading token status...</div>
-    );
-  }
 
   if (error) {
     return compact ? (

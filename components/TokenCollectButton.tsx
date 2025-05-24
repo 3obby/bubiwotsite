@@ -1,10 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+
+interface LifetimeMetrics {
+  allocated: number;
+  collected: number;
+  burned?: number;
+  collections: number;
+  collectionPercentage: number;
+}
 
 interface TokenCollectButtonProps {
   accruedValue: number; // Passed from main page
-  onTokensCollected?: (newBalance: number, lifetimeMetrics?: any) => void;
+  onTokensCollected?: (newBalance: number, lifetimeMetrics?: LifetimeMetrics) => void;
   userId?: string;
   userPassword?: string;
   sessionId?: string;
