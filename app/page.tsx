@@ -591,8 +591,6 @@ export default function Home() {
   const [accruedValue, setAccruedValue] = useState<number>(0);
   const [isTokenEconomicsOpen, setIsTokenEconomicsOpen] = useState(false); // New state for token economics accordion
   const [showGlobalDistribution, setShowGlobalDistribution] = useState(false); // New state for global distribution
-  const [saveLog, setSaveLog] = useState<string>('');
-  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [isInflationMetricsOpen, setIsInflationMetricsOpen] = useState(false); // New state for inflation metrics accordion
   const [userCreatedAt, setUserCreatedAt] = useState<Date | null>(null);
   const [userUpdatedAt, setUserUpdatedAt] = useState<Date | null>(null);
@@ -625,15 +623,6 @@ export default function Home() {
     topUserTokens: 0,
     tokenDistribution: [] as Array<{ range: string; count: number; percentage: number }>
   });
-  
-  // Token distribution history
-  const [tokenDistributionHistory, setTokenDistributionHistory] = useState<Array<{
-    timestamp: string;
-    totalIssued: number;
-    circulating: number;
-    totalBurned: number;
-    currentRate: number;
-  }>>([]);
   
   // Network status tracking
   const [networkStatus, setNetworkStatus] = useState<'online' | 'offline' | 'checking'>('checking');
@@ -718,18 +707,6 @@ export default function Home() {
         topUserTokens: data.topUserTokens || 0,
         tokenDistribution: data.tokenDistribution || []
       });
-      
-      // Add to history
-      setTokenDistributionHistory(prev => [
-        ...prev,
-        {
-          timestamp: new Date().toISOString(),
-          totalIssued: data.totalIssued || 0,
-          circulating: data.circulating || 0,
-          totalBurned: data.totalBurned || 0,
-          currentRate: data.currentRate || 0
-        }
-      ].slice(-100)); // Keep only last 100 entries
       
       console.log('Global token balance fetched:', data);
     } catch (error) {
@@ -1652,16 +1629,6 @@ export default function Home() {
                         </div>
                       </div>
 
-                      {/* Operation Log */}
-                      {saveLog && (
-                        <div className="m-3 p-2 bg-gray-100 rounded-md border border-gray-200 text-xs font-mono overflow-auto max-h-40">
-                          <div className="font-medium text-gray-700 mb-1">Operation Log:</div>
-                          <pre className="whitespace-pre-wrap text-gray-600">{saveLog}</pre>
-                          {saveSuccess && (
-                            <div className="mt-1 text-green-600 font-medium">✓ Save successful!</div>
-                          )}
-                        </div>
-                      )}
                       
                       {/* Session and Status Info */}
                       <div className="p-3 border-t border-gray-200 space-y-2">
