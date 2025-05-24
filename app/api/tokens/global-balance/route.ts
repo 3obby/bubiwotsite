@@ -12,12 +12,22 @@ export async function GET() {
       }
     });
 
+    // Count users with nonzero token balances
+    const usersWithBalance = await prisma.user.count({
+      where: {
+        credits: {
+          gt: 0
+        }
+      }
+    });
+
     // If no record exists, return default values
     if (!latestBalance) {
       return NextResponse.json({
         totalIssued: 0,
         totalBurned: 0,
         circulating: 0,
+        usersWithBalance,
         timestamp: new Date(),
         lastUpdated: new Date()
       });
@@ -28,6 +38,7 @@ export async function GET() {
       totalIssued: parseFloat(latestBalance.totalIssued.toString()),
       totalBurned: parseFloat(latestBalance.totalBurned.toString()),
       circulating: parseFloat(latestBalance.circulating.toString()),
+      usersWithBalance,
       timestamp: latestBalance.timestamp,
       lastUpdated: latestBalance.timestamp
     };

@@ -557,7 +557,6 @@ function ProfileModal({
 
 export default function Home() {
   // Mock data
-  const [userCount] = useState(0);
   const [totalBubi] = useState("???");
   const [tasks] = useState([
     { id: 1, title: "Invite a friend" },
@@ -604,6 +603,7 @@ export default function Home() {
     totalIssued: 0,
     circulating: 0,
     totalBurned: 0,
+    usersWithBalance: 0,
     currentRate: 0,
     lastWithdrawal: null as Date | null,
     inflationRate: 0,
@@ -688,6 +688,7 @@ export default function Home() {
         totalIssued: data.totalIssued || 0,
         circulating: data.circulating || 0,
         totalBurned: data.totalBurned || 0,
+        usersWithBalance: data.usersWithBalance || 0,
         currentRate: data.currentRate || 0,
         lastWithdrawal: data.lastWithdrawal ? new Date(data.lastWithdrawal) : null,
         inflationRate: data.inflationRate || 0,
@@ -1652,8 +1653,8 @@ export default function Home() {
                         
                         {/* User Count */}
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">Total Named Users:</span>
-                          <span className="text-sm text-gray-800 font-medium">{userCount}</span>
+                          <span className="text-xs text-gray-500">Users with Balance:</span>
+                          <span className="text-sm text-gray-800 font-medium">{globalTokenMetrics.usersWithBalance}</span>
                         </div>
                       </div>
                     </div>
@@ -1750,7 +1751,7 @@ export default function Home() {
                       <circle cx="12" cy="7" r="4"/>
                     </svg>
                     <span className="text-xs text-black">Joined</span>
-                    <span className="ml-1 font-semibold text-xs text-black">{userCount}</span>
+                    <span className="ml-1 font-semibold text-xs text-black">{globalTokenMetrics.usersWithBalance}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
