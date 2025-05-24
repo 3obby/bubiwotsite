@@ -13,11 +13,24 @@ model User {
   password    String
   alias       String   @default("anon")
   hasLoggedIn Boolean  @default(false)
-  credits     Decimal  @default(0.000777) @db.Decimal(12,8) // 8 decimal places with default 0.000777
+  credits     Decimal  @default(0) @db.Decimal(12,8) // Changed from 0.000777 to 0
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  
+  // Token earning system fields
+  accountActivatedAt DateTime @default(now()) // When account started earning tokens
+  lastWithdrawAt     DateTime? // Last time user collected their tokens
+  
+  // Lifetime credit tracking
+  lifetimeAllocated   Decimal @default(0) @db.Decimal(16,8) // Total credits ever allocated (accrued) to this user
+  lifetimeCollected   Decimal @default(0) @db.Decimal(16,8) // Total credits user has actually collected/claimed
+  lifetimeCollections Int     @default(0) // Number of times user has collected tokens
+  
   burnedCredits BurnedCredit[] // Relation to credits burned by this user
   transactions TransactionRecord[] // Relation to transaction records
+  posts       Post[]   // Posts authored by this user
+  replies     Reply[]  // Replies authored by this user
+  valueDonations ValueDonation[] // Value donations made by this user
 }
 
 // Track burned credits for transparency
@@ -26,7 +39,7 @@ model BurnedCredit {
   userId      String
   user        User     @relation(fields: [userId], references: [id])
   amount      Decimal  @db.Decimal(12,8) // Amount burned
-  action      String   // What the credit was used for (e.g., "rename", "login")
+  action      String   // What the credit was used for (e.g., "rename", "login", "post-promotion")
   balanceBefore Decimal @db.Decimal(12,8) // Balance before the burn
   balanceAfter  Decimal @db.Decimal(12,8) // Balance after the burn
   createdAt   DateTime @default(now())
@@ -44,7 +57,7 @@ model TransactionRecord {
   id              String    @id @default(cuid())
   userId          String
   user            User      @relation(fields: [userId], references: [id])
-  transactionType String    // Type of transaction (e.g., "manual-save", "fund-account", "rename")
+  transactionType String    // Type of transaction (e.g., "manual-save", "fund-account", "rename", "post", "reply", "donate")
   amount          Decimal   @db.Decimal(12,8) // Net amount involved in the transaction
   balanceBefore   Decimal   @db.Decimal(12,8) // Credits balance before transaction
   balanceAfter    Decimal   @db.Decimal(12,8) // Credits balance after transaction
@@ -69,4 +82,62 @@ model GlobalTokenBalance {
   burnedCredits   BurnedCredit[]
   
   @@index([timestamp])
+}
+
+// Posts on the global board
+model Post {
+  id              String   @id @default(cuid())
+  authorId        String?
+  author          User?    @relation(fields: [authorId], references: [id])
+  content         String   // Limited to 1000 characters
+  promotionValue  Decimal  @default(0) @db.Decimal(12,8) // Credits burned by author to promote
+  donatedValue    Decimal  @default(0) @db.Decimal(12,8) // Total credits donated by others
+  totalValue      Decimal  @default(0) @db.Decimal(12,8) // promotionValue + donatedValue (computed field)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  replies         Reply[]        // Replies to this post
+  valueDonations  ValueDonation[] // Value donations to this post
+  
+  @@index([totalValue, createdAt]) // For sorting by value and time
+  @@index([createdAt]) // For chronological sorting
+  @@index([authorId])
+}
+
+// Replies to posts
+model Reply {
+  id              String   @id @default(cuid())
+  postId          String
+  post            Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId        String
+  author          User     @relation(fields: [authorId], references: [id])
+  content         String   // Limited to 1000 characters
+  donatedValue    Decimal  @default(0) @db.Decimal(12,8) // Total credits donated to this reply
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  valueDonations  ValueDonation[] // Value donations to this reply
+  
+  @@index([postId, donatedValue]) // For sorting replies by value within a post
+  @@index([postId, createdAt]) // For chronological sorting within a post
+  @@index([authorId])
+}
+
+// Track value donations for transparency
+model ValueDonation {
+  id              String   @id @default(cuid())
+  donorId         String?  // Nullable for anonymous donations
+  donor           User?    @relation(fields: [donorId], references: [id])
+  postId          String?  // Either postId or replyId must be set
+  post            Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  replyId         String?  // Either postId or replyId must be set
+  reply           Reply?   @relation(fields: [replyId], references: [id], onDelete: Cascade)
+  amount          Decimal  @db.Decimal(12,8) // Amount donated
+  isAnonymous     Boolean  @default(false) // Whether donation is anonymous
+  createdAt       DateTime @default(now())
+  
+  @@index([postId])
+  @@index([replyId])
+  @@index([donorId])
+  @@index([createdAt])
 }

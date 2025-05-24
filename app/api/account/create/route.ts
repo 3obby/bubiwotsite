@@ -29,7 +29,10 @@ export async function POST() {
       password: password, 
       userId: newUser.id,
       alias: newUser.alias,
-      hasLoggedIn: false
+      hasLoggedIn: false,
+      credits: newUser.credits,
+      createdAt: newUser.createdAt,
+      updatedAt: newUser.updatedAt
     }, { status: 201 });
   } catch (error) {
     console.error("Failed to create account:", error);

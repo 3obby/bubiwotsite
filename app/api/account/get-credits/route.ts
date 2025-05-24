@@ -20,15 +20,28 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
     
-    // Return the user's credits and additional info
-    return NextResponse.json({ 
+    // Ensure proper number conversion from Decimal
+    const credits = parseFloat(user.credits.toString());
+    
+    console.log(`📤 get-credits API response for user ${userId}:`);
+    console.log(`  💰 Raw database credits: ${user.credits}`);
+    console.log(`  💳 Converted credits: ${credits} (type: ${typeof credits})`);
+    console.log(`  👤 Alias: ${user.alias}`);
+    console.log(`  🔐 Has logged in: ${user.hasLoggedIn}`);
+    
+    const responseData = { 
       userId: user.id,
-      credits: user.credits,
+      credits: credits, // Ensure it's a number
       alias: user.alias,
       hasLoggedIn: user.hasLoggedIn,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt
-    }, { status: 200 });
+    };
+    
+    console.log(`  📦 Final response data:`, responseData);
+
+    // Return the user's credits and additional info
+    return NextResponse.json(responseData, { status: 200 });
   } catch (error) {
     console.error("Failed to get credits:", error);
     return NextResponse.json({ 
