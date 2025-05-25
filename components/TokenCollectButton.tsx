@@ -23,6 +23,9 @@ export default function TokenCollectButton({ accruedValue, onTokensCollected, us
 
   // Client-side validation: check if accrued value meets minimum
   const clientCanCollect = accruedValue >= 0.01;
+  
+  // Calculate progress percentage (0-100%) towards the ¤0.01 requirement
+  const progressPercentage = Math.min((accruedValue / 0.01) * 100, 100);
 
   const handleDirectCollection = async () => {
     if (!clientCanCollect || isCollecting) return;
@@ -106,15 +109,24 @@ export default function TokenCollectButton({ accruedValue, onTokensCollected, us
       <button
         onClick={handleDirectCollection}
         disabled={!clientCanCollect || isCollecting}
-        className={`w-12 h-12 rounded-md flex flex-col items-center justify-center transition-colors ${
-          clientCanCollect && !isCollecting
+        className={`w-12 h-12 rounded-md flex flex-col items-center justify-center transition-all duration-300 relative overflow-hidden ${
+          isCollecting
+            ? 'bg-blue-500 text-white'
+            : clientCanCollect
             ? 'bg-green-500 text-white hover:bg-green-600'
-            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            : 'bg-gray-300 text-gray-500'
         }`}
+        style={{
+          background: isCollecting 
+            ? undefined 
+            : clientCanCollect 
+            ? undefined
+            : `linear-gradient(to top, #22c55e ${progressPercentage}%, #d1d5db ${progressPercentage}%)`
+        }}
         title={
           clientCanCollect
             ? `Collect accrued tokens (¤${accruedValue.toFixed(6)} - ¤0.01 fee)`
-            : `Need ¤0.01 accrued (currently ¤${accruedValue.toFixed(6)})`
+            : `Need ¤0.01 accrued (currently ¤${accruedValue.toFixed(6)}) - ${progressPercentage.toFixed(1)}% ready`
         }
       >
         {isCollecting ? (
