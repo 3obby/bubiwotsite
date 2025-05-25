@@ -596,6 +596,7 @@ export default function Home() {
   
   // Add loading state for session initialization
   const [isInitializing, setIsInitializing] = useState(true);
+  const [isLoadingDetailedData, setIsLoadingDetailedData] = useState(false);
   const [loadingDots, setLoadingDots] = useState(1);
   
   // Global token metrics state
@@ -676,7 +677,17 @@ export default function Home() {
   const fetchGlobalTokenBalance = useCallback(async () => {
     try {
       console.log('Fetching global token balance...');
-      const response = await fetch('/api/tokens/global-balance');
+      
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 second timeout
+      
+      const response = await fetch('/api/tokens/global-balance', {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
       if (!response.ok) {
         throw new Error(`Failed to fetch global token balance: ${response.status}`);
       }
@@ -711,9 +722,18 @@ export default function Home() {
       
       console.log('Global token balance fetched:', data);
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error('⏰ Fetch global token balance timed out');
+        return; // Silently fail for non-critical data
+      }
       console.error('Error fetching global token balance:', error);
       // Fallback to using burned credits data
-      await fetchBurnedCredits();
+      try {
+        await fetchBurnedCredits();
+      } catch (fallbackError) {
+        console.error('Fallback also failed:', fallbackError);
+        // Final fallback - just continue without this data
+      }
     }
   }, [fetchBurnedCredits]);
   
@@ -769,52 +789,100 @@ export default function Home() {
           setHasLoggedIn(storedHasLoggedIn);
           setIsLoggedIn(true);
           
-          // Fetch current credits for this user
-          await fetchUserCredits(storedUserId);
+          // Initialize session timing first (non-blocking)
+          const storedSessionStart = localStorage.getItem('bubiwot_session_start');
+          const now = Date.now();
+          
+          if (storedSessionStart) {
+            const sessionStartTime = parseInt(storedSessionStart, 10);
+            setSessionStart(sessionStartTime);
+            setElapsed(Math.floor((now - sessionStartTime) / 1000));
+          } else {
+            localStorage.setItem('bubiwot_session_start', now.toString());
+            setSessionStart(now);
+            setElapsed(0);
+          }
+          
+          // Generate session ID if not exists (synchronous)
+          if (!localStorage.getItem('bubiwot_session_id')) {
+            localStorage.setItem('bubiwot_session_id', uuidv4());
+          }
+          
+          // End loading state early for better UX
+          setIsInitializing(false);
+          
+          // Fetch user data and global data in parallel (non-blocking)
+          setIsLoadingDetailedData(true);
+          Promise.allSettled([
+            fetchUserCredits(storedUserId).catch(error => {
+              console.error('Non-critical: Failed to fetch user credits:', error);
+            }),
+            fetchGlobalTokenBalance().catch(error => {
+              console.error('Non-critical: Failed to fetch global data:', error);
+            })
+          ]).then(() => {
+            console.log('✅ Background data loading completed');
+            setIsLoadingDetailedData(false);
+          });
+          
         } else {
           // No user session exists, create a new one
           console.log('🆕 Creating new user session...');
-          const response = await fetch('/api/account/create', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          });
           
-          if (!response.ok) {
-            throw new Error(`Failed to create account: ${response.status}`);
+          // Add timeout to account creation
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+          
+          try {
+            const response = await fetch('/api/account/create', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+              throw new Error(`Failed to create account: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('✅ New user session created:', data);
+            
+            // Store new user data
+            localStorage.setItem('bubiwot_user_id', data.userId);
+            localStorage.setItem('bubiwot_user_alias', data.alias);
+            localStorage.setItem('bubiwot_user_password', data.password);
+            localStorage.setItem('bubiwot_user_has_logged_in', 'false');
+            
+            // Update state
+            setUserId(data.userId);
+            setAlias(data.alias);
+            setUserPassword(data.password);
+            setHasLoggedIn(false);
+            setIsLoggedIn(true);
+            setCredits(parseFloat(data.credits) || 0.000777);
+            
+            if (data.createdAt) setUserCreatedAt(new Date(data.createdAt));
+            if (data.updatedAt) setUserUpdatedAt(new Date(data.updatedAt));
+            
+          } catch (error) {
+            clearTimeout(timeoutId);
+            if (error instanceof Error && error.name === 'AbortError') {
+              console.error('❌ Account creation timed out');
+              throw new Error('Account creation timed out. Please refresh and try again.');
+            }
+            throw error;
           }
-          
-          const data = await response.json();
-          console.log('✅ New user session created:', data);
-          
-          // Store new user data
-          localStorage.setItem('bubiwot_user_id', data.userId);
-          localStorage.setItem('bubiwot_user_alias', data.alias);
-          localStorage.setItem('bubiwot_user_password', data.password);
-          localStorage.setItem('bubiwot_user_has_logged_in', 'false');
-          
-          // Update state
-          setUserId(data.userId);
-          setAlias(data.alias);
-          setUserPassword(data.password);
-          setHasLoggedIn(false);
-          setIsLoggedIn(true);
-          setCredits(parseFloat(data.credits) || 0.000777);
-          
-          if (data.createdAt) setUserCreatedAt(new Date(data.createdAt));
-          if (data.updatedAt) setUserUpdatedAt(new Date(data.updatedAt));
         }
         
-        // Initialize or get session start time
+        // Initialize session timing for new users (if not already done)
         const storedSessionStart = localStorage.getItem('bubiwot_session_start');
         const now = Date.now();
         
-        if (storedSessionStart) {
-          const sessionStartTime = parseInt(storedSessionStart, 10);
-          setSessionStart(sessionStartTime);
-          setElapsed(Math.floor((now - sessionStartTime) / 1000));
-        } else {
+        if (!storedSessionStart) {
           localStorage.setItem('bubiwot_session_start', now.toString());
           setSessionStart(now);
           setElapsed(0);
@@ -825,12 +893,11 @@ export default function Home() {
           localStorage.setItem('bubiwot_session_id', uuidv4());
         }
         
-        // Fetch initial data - call functions directly instead of using dependencies
-        try {
-          await fetchGlobalTokenBalance();
-        } catch (error) {
-          console.error('Failed to fetch global data:', error);
-          // Continue with initialization even if this fails
+        // For new users, fetch global data in background (non-blocking)
+        if (!storedUserId) {
+          fetchGlobalTokenBalance().catch(error => {
+            console.error('Non-critical: Failed to fetch global data:', error);
+          });
         }
         
       } catch (error) {
@@ -1062,6 +1129,10 @@ export default function Home() {
     try {
       console.log(`🔍 Fetching credits for user ${uid}...`);
       
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+      
       // Use the balance API instead of get-credits
       const timestamp = Date.now();
       const response = await fetch(`/api/tokens/balance?userId=${uid}&_t=${timestamp}`, {
@@ -1070,8 +1141,11 @@ export default function Home() {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
           'Expires': '0'
-        }
+        },
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       console.log(`📡 Response status: ${response.status} ${response.statusText}`);
       
@@ -1119,6 +1193,10 @@ export default function Home() {
         throw new Error(errorData.error || `HTTP ${response.status}`);
       }
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error("⏰ Fetch user credits timed out");
+        throw new Error('Request timed out. Please check your connection.');
+      }
       console.error("💥 Failed to fetch user data:", error);
       throw error; // Re-throw so caller can handle
     }
@@ -1183,6 +1261,14 @@ export default function Home() {
         <div className="flex items-center gap-2">
           <span className="text-sm font-extralight tracking-wider text-gray-600">Bitcoin UBI Web-of-Trust</span>
           <span className="text-xs font-medium text-red-500">beta</span>
+          
+          {/* Background loading indicator */}
+          {isLoadingDetailedData && (
+            <div className="flex items-center gap-1">
+              <div className="w-1 h-1 bg-blue-500 rounded-full animate-pulse"></div>
+              <span className="text-xs text-blue-500">loading data...</span>
+            </div>
+          )}
           
           {/* Network Status Indicator */}
           <div className="relative" data-network-stats>
