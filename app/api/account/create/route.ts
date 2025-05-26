@@ -14,12 +14,12 @@ function generatePassword(length = 20) {
 export async function POST() {
   try {
     const password = generatePassword();
-    // In a real application, you would HASH this password before saving!
+    // In a real application, you would HASH this password before saving
     // For example, using bcrypt: const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await prisma.user.create({
       data: {
         password: password, // Store the plain password for now as per current scope
-                            // but ideally, this should be hashedPassword
+                            
         hasLoggedIn: false, // Explicitly set to false for new accounts
         // The alias will be "anon" by default as defined in the schema
       },
