@@ -1,0 +1,234 @@
+[]build todo
+
+=== AGENT PROMPTS FOR REDDIT-STYLE MESSAGE BOARD ===
+
+PROMPT 1: Database Schema Updates
+"Add the following fields to the Prisma schema for the message board functionality:
+
+Post model additions:
+- stake: Decimal @default(0) @db.Decimal(12,8) // Staked amount for decay math
+- expiresAt: DateTime? // When post expires based on decay
+- effectiveValue: Decimal @default(0) @db.Decimal(12,8) // Computed field for sorting
+
+Reply model additions:
+- stake: Decimal @default(0) @db.Decimal(12,8)
+- expiresAt: DateTime?
+- effectiveValue: Decimal @default(0) @db.Decimal(12,8)
+
+Create new EmojiReaction model:
+- id, userId, postId?, replyId?, emoji, amount, createdAt
+- Proper relations and indexes
+
+Update User model to include:
+- emojiReactions: EmojiReaction[]
+
+Run migration and update Prisma client."
+
+PROMPT 2: Core Message Board Component
+"Create a MessageBoard component that renders as a card on the front page below the user stats. Structure:
+
+- Tabbed interface with 3 tabs: 'Global', 'Transactions', 'Users'
+- Default to 'Global' tab open
+- Card styling consistent with existing user stats card
+- Responsive mobile-first design
+- State management for active tab
+- Place this component in the main page.tsx after the user stats panel"
+
+PROMPT 3: Global Feed Tab Implementation
+"Build the Global feed tab with reddit-style threading:
+
+Features needed:
+- Tree-structured message display (posts -> replies -> nested replies)
+- Craigslist-minimalism styling (clean, simple, text-focused)
+- Click to expand/collapse threads
+- Show: author alias, timestamp, content, stake amount, total donations
+- Sort by effectiveValue (stake + donations with time decay)
+- Pagination or infinite scroll
+- 'Reply' button on each post/reply
+
+API endpoints:
+- GET /api/posts/feed - fetch posts with replies
+- POST /api/posts/create - create new post
+- POST /api/replies/create - create reply to post or reply
+
+Use recursive components for nested threading."
+
+PROMPT 4: Transaction History Tab
+"Create the Transactions tab showing user's transaction history:
+
+Display all TransactionRecord entries for current user:
+- Transaction type (post, reply, donate, emoji, collect, etc.)
+- Amount (+/-) with color coding
+- Balance before/after
+- Timestamp
+- Clickable rows to see detailed metadata
+- Filter by transaction type
+- Export functionality (CSV)
+
+Table format with:
+- Date/Time | Type | Amount | Balance | Details button
+- Modal popup for transaction details showing full metadata JSON
+- Pagination with 50 records per page"
+
+PROMPT 5: Users Directory Tab  
+"Build the Users tab with directory and profile views:
+
+Main view - User directory:
+- List all users with basic stats
+- Alias, join date, total credits, post count
+- Search/filter functionality
+- Click user to view profile
+
+Profile modal:
+- User stats (lifetime allocated, collected, burned)
+- Recent posts/replies
+- Transaction history
+- Donation given/received summary
+- Visual charts if possible
+
+API endpoints:
+- GET /api/users/directory - list all users
+- GET /api/users/[id]/profile - detailed user profile
+- Include privacy controls for future"
+
+PROMPT 6: Post Creation Interface
+"Add post creation functionality to the Global tab:
+
+- 'Create Post' button at top of feed
+- Modal with:
+  - Content textarea (1000 char limit)
+  - Stake amount input (minimum required)
+  - Preview functionality
+  - Cost breakdown (stake + 3% protocol fee)
+  - Submit button
+
+Validation:
+- Check user has sufficient credits
+- Content length validation
+- Minimum stake requirements
+
+After creation:
+- Refresh feed
+- Show success message
+- Scroll to new post"
+
+PROMPT 7: Reply System Implementation
+"Build the reply functionality:
+
+Reply button on each post/reply opens modal:
+- Quote/reference parent content
+- Reply textarea (1000 chars)
+- Stake amount (can be 0 for replies)
+- Threading level indicator
+- Submit creates nested reply
+
+Visual threading:
+- Indent levels for nested replies
+- Connecting lines for visual hierarchy
+- Collapse/expand functionality
+- 'Show more replies' for deep threads
+- Color coding by thread depth"
+
+PROMPT 8: Emoji Reaction System
+"Implement micro-tipping via emoji reactions:
+
+Features:
+- Emoji picker on hover/click each post/reply
+- First emoji costs more, subsequent cheaper
+- Show emoji counts with hover tooltips showing amounts
+- Animated emoji when tipped
+- Tip splitting: 85% author, 15% to ancestors
+
+UI:
+- Emoji bar below each post showing reactions with counts
+- Click emoji to add reaction (opens amount modal)
+- Show your own reactions highlighted
+- Real-time updates when others react"
+
+PROMPT 9: API Routes and Database Operations
+"Create all necessary API routes:
+
+/api/posts/feed:
+- Fetch posts with nested replies
+- Apply time decay calculations
+- Sort by effectiveValue
+- Include user data and reaction counts
+
+/api/posts/create:
+- Validate stake amount and user balance
+- Deduct stake + protocol fee
+- Create post with expiresAt
+- Update user transaction record
+
+/api/replies/create:
+- Create nested reply with proper parentId
+- Handle threading up to 10 levels deep
+- Update ancestor effective values
+
+/api/emoji/react:
+- Process emoji tip transaction
+- Split payment to author and ancestors
+- Update reaction counts
+
+/api/posts/[id]/details:
+- Get detailed post data with full thread
+- Include all reactions and donations"
+
+PROMPT 10: Real-time Features and Polish
+"Add real-time updates and polish:
+
+Real-time features:
+- WebSocket or polling for live updates
+- New posts appear without refresh
+- Reaction counts update live
+- Show 'X new posts' notification
+
+Polish items:
+- Loading states for all operations
+- Error handling with user-friendly messages
+- Optimistic UI updates
+- Keyboard shortcuts (R for reply, etc.)
+- Smooth animations for expand/collapse
+- Mobile-responsive design
+- Dark mode toggle
+- Accessibility features (ARIA labels, keyboard nav)"
+
+PROMPT 11: Time Decay and Expiration Logic
+"Implement the time decay system:
+
+Decay function:
+- effectiveValue = baseStake * e^(-λt) + totalDonations * e^(-λt_donation)
+- Lambda value configurable per content type
+- Real-time decay calculation in feed sorting
+
+Expiration handling:
+- Visual countdown timers on posts
+- 'Reclaim' button when expired
+- Archive expired posts or mark inactive
+- Reclaim process returns remaining stake + bonuses
+
+Background job:
+- Hourly calculation of all effective values
+- Update database with current values
+- Clean up truly expired content"
+
+PROMPT 12: Integration with Existing UI
+"Integrate the message board seamlessly:
+
+Placement:
+- Add MessageBoard component after user stats panel in main page
+- Same card styling and responsive behavior
+- Smooth tab transitions
+- Consistent color scheme and typography
+
+State management:
+- Share user context with existing components
+- Update credits display when posting/tipping
+- Integrate with TokenCollectButton refresh cycle
+- Handle login state changes
+
+Performance:
+- Lazy load tabs (don't fetch data until tab opened)
+- Virtual scrolling for large feeds
+- Debounced search and filtering
+- Cache frequently accessed data"

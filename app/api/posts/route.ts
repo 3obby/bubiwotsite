@@ -56,9 +56,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found or could not be created' }, { status: 404 });
     }
 
-    // Calculate total cost: 0.1 per character + promotion value
+    // Calculate total cost: 0.1 per character + promotion value + 3% protocol fee
     const characterCost = content.length * 0.1;
-    const totalCost = characterCost + promotionValue;
+    const protocolFee = promotionValue * 0.03; // 3% protocol fee that gets burned
+    const totalCost = characterCost + promotionValue + protocolFee;
+    
+    // Calculate what gets burned vs what goes to post
+    const burnedAmount = characterCost + protocolFee; // Character cost + protocol fee get burned
+    const postValue = promotionValue; // Only promotion value goes to post
+    
+    console.log(`Creating post for user ${user.id}:`);
+    console.log(`  - Character cost: ${characterCost} (burned)`);
+    console.log(`  - Promotion value: ${promotionValue} (to post)`);
+    console.log(`  - Protocol fee (3%): ${protocolFee} (burned)`);
+    console.log(`  - Total cost: ${totalCost}`);
+    console.log(`  - Total burned: ${burnedAmount}`);
 
     // Check if user has sufficient credits
     if (parseFloat(user.credits.toString()) < totalCost) {
@@ -67,75 +79,158 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Create post and update user credits in a transaction
-    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // Create the post
-      const post = await tx.post.create({
-        data: {
-          content: content.trim(),
-          authorId: isAnonymous ? null : user.id, // Set to null if anonymous
-          promotionValue,
-          totalValue: promotionValue, // Initially just the promotion value
-        },
-        include: {
-          author: isAnonymous ? false : {
-            select: {
-              id: true,
-              alias: true,
+    let retryCount = 0;
+    const maxRetries = 2;
+
+    while (retryCount <= maxRetries) {
+      try {
+        console.log(`Transaction attempt ${retryCount + 1} for post creation`);
+        
+        // Create post and update user credits in a transaction
+        const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+          // Refetch user inside transaction to avoid stale references
+          const currentUser = await tx.user.findUnique({
+            where: { id: user.id },
+          });
+
+          if (!currentUser) {
+            throw new Error('User not found in transaction');
+          }
+
+          // Double-check credits inside transaction
+          const currentCredits = parseFloat(currentUser.credits.toString());
+          if (currentCredits < totalCost) {
+            throw new Error(`Insufficient credits. Need ${totalCost.toFixed(3)}, have ${currentCredits.toFixed(6)}`);
+          }
+
+          // Create the post
+          const post = await tx.post.create({
+            data: {
+              content: content.trim(),
+              authorId: isAnonymous ? null : user.id, // Set to null if anonymous
+              promotionValue: postValue, // Only the promotion value, not including protocol fee
+              totalValue: postValue, // Initially just the promotion value (no protocol fee)
+            },
+          });
+
+          // Update user credits using current values
+          const newCredits = currentCredits - totalCost;
+          await tx.user.update({
+            where: { id: user.id },
+            data: { credits: newCredits },
+          });
+
+          // Record the credit burn for only the burned portion (character cost + protocol fee)
+          await tx.burnedCredit.create({
+            data: {
+              userId: user.id,
+              amount: burnedAmount, // Only character cost + protocol fee get burned
+              action: 'post-creation',
+              balanceBefore: currentUser.credits,
+              balanceAfter: newCredits,
+            },
+          });
+
+          // Record the transaction using current values with detailed breakdown
+          await tx.transactionRecord.create({
+            data: {
+              userId: user.id,
+              transactionType: 'post',
+              amount: -totalCost,
+              balanceBefore: currentUser.credits,
+              balanceAfter: newCredits,
+              metadata: {
+                postId: post.id,
+                characterCost,
+                promotionValue: postValue,
+                protocolFee,
+                totalCost,
+                burnedAmount,
+                costBreakdown: {
+                  characterCost: characterCost,
+                  promotionValue: postValue,
+                  protocolFee: protocolFee,
+                  totalBurned: burnedAmount,
+                },
+                isAnonymous,
+                authMethod: password ? 'password' : userId ? 'userId' : 'sessionId',
+                sessionId: sessionId || null,
+              },
+            },
+          });
+
+          // Return simplified post data to avoid complex queries in transaction
+          return {
+            id: post.id,
+            content: post.content,
+            authorId: post.authorId,
+            promotionValue: post.promotionValue,
+            totalValue: post.totalValue,
+            createdAt: post.createdAt,
+          };
+        }, {
+          maxWait: 5000, // Maximum time to wait for a transaction slot (5s)
+          timeout: 10000, // Maximum time the transaction can run (10s)
+        });
+
+        console.log(`Transaction successful, fetching complete post data for ${result.id}`);
+
+        // Fetch the complete post data outside the transaction to reduce transaction load
+        const completePost = await prisma.post.findUnique({
+          where: { id: result.id },
+          include: {
+            author: isAnonymous ? false : {
+              select: {
+                id: true,
+                alias: true,
+              },
+            },
+            _count: {
+              select: {
+                replies: true,
+              },
             },
           },
-          _count: {
-            select: {
-              replies: true,
-            },
-          },
-        },
-      });
+        });
 
-      // Update user credits
-      const newCredits = parseFloat(user.credits.toString()) - totalCost;
-      await tx.user.update({
-        where: { id: user.id },
-        data: { credits: newCredits },
-      });
+        console.log(`Post creation completed successfully for ${result.id}`);
+        return NextResponse.json(completePost);
 
-      // Record the credit burn
-      await tx.burnedCredit.create({
-        data: {
-          userId: user.id,
-          amount: totalCost,
-          action: 'post-creation',
-          balanceBefore: user.credits,
-          balanceAfter: newCredits,
-        },
-      });
-
-      // Record the transaction
-      await tx.transactionRecord.create({
-        data: {
-          userId: user.id,
-          transactionType: 'post',
-          amount: -totalCost,
-          balanceBefore: user.credits,
-          balanceAfter: newCredits,
-          metadata: {
-            postId: post.id,
-            characterCost,
-            promotionValue,
-            isAnonymous,
-            authMethod: password ? 'password' : userId ? 'userId' : 'sessionId',
-            sessionId: sessionId || null,
-          },
-        },
-      });
-
-      return post;
-    });
-
-    return NextResponse.json(result);
+      } catch (transactionError: unknown) {
+        console.error(`Transaction attempt ${retryCount + 1} failed:`, transactionError);
+        
+        // If it's a P2028 error (transaction timeout), retry
+        if (transactionError instanceof Error && 
+            'code' in transactionError && 
+            (transactionError as { code: string }).code === 'P2028' && 
+            retryCount < maxRetries) {
+          retryCount++;
+          console.log(`Retrying transaction due to P2028 error, attempt ${retryCount + 1}`);
+          // Wait a bit before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+          continue;
+        }
+        
+        // If it's not a retryable error or we've exhausted retries, throw the error
+        throw transactionError;
+      }
+    }
   } catch (error) {
     console.error('Error creating post:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    
+    // Provide more specific error messages
+    if (error instanceof Error) {
+      if (error.message.includes('Insufficient credits')) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+      if (error.message.includes('User not found')) {
+        return NextResponse.json({ error: 'User session expired. Please log in again.' }, { status: 401 });
+      }
+    }
+    
+    return NextResponse.json({ 
+      error: 'Failed to create post. Please try again.' 
+    }, { status: 500 });
   }
 }
 

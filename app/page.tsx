@@ -5,6 +5,9 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { Analytics } from "@vercel/analytics/react";
 import TokenCollectButton from '@/components/TokenCollectButton';
+import GlobalFeed from '@/components/GlobalFeed';
+import TransactionHistory from '@/components/TransactionHistory';
+import UsersTab from '@/components/UsersTab';
 
 // Generate a UUID (v4, lightweight)
 function uuidv4() {
@@ -21,6 +24,165 @@ function formatElapsed(secs: number) {
   const s = secs % 60;
   return `${h > 0 ? h + 'h ' : ''}${m > 0 ? m + 'm ' : ''}${s}s`;
 }
+
+// MessageBoard Component
+const MessageBoard = React.memo(function MessageBoard({ 
+  userId, 
+  userPassword, 
+  credits, 
+  onCreditsUpdate 
+}: { 
+  userId?: string | null; 
+  userPassword?: string; 
+  credits?: number; 
+  onCreditsUpdate?: (newCredits: number) => void; 
+}) {
+  const [activeTab, setActiveTab] = useState<'global' | 'transactions' | 'users'>('global');
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const tabs = [
+    { id: 'global' as const, label: 'Global', icon: '🌍' },
+    { id: 'transactions' as const, label: 'Transactions', icon: '💳' },
+    { id: 'users' as const, label: 'Users', icon: '👥' }
+  ];
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'global':
+        return (
+          <GlobalFeed
+            userId={userId || undefined}
+            userPassword={userPassword}
+            credits={credits}
+            onCreditsUpdate={onCreditsUpdate}
+          />
+        );
+      case 'transactions':
+        return (
+          <TransactionHistory
+            userId={userId || undefined}
+          />
+        );
+      case 'users':
+        return (
+          <UsersTab />
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Close expanded view when clicking outside (only in expanded mode)
+  React.useEffect(() => {
+    if (!isExpanded) return;
+    
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsExpanded(false);
+      }
+    };
+    
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isExpanded]);
+
+  return (
+    <>
+      {isExpanded && (
+        // Full screen overlay
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-full max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Header with close button */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
+              <h2 className="text-lg font-semibold text-gray-800">Message Board</h2>
+              <button
+                onClick={() => setIsExpanded(false)}
+                className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                title="Close"
+              >
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            {/* Tab Headers */}
+            <div className="flex border-b border-gray-200 bg-white">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex-1 px-6 py-4 text-base font-medium text-center transition-colors relative ${
+                    activeTab === tab.id
+                      ? 'text-blue-600 bg-blue-50'
+                      : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="text-sm">{tab.icon}</span>
+                    <span>{tab.label}</span>
+                  </div>
+                  {activeTab === tab.id && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab Content - Expanded */}
+            <div className="flex-1 p-6 overflow-y-auto">
+              {renderTabContent()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Normal card view */}
+      {!isExpanded && (
+        <div className="w-full max-w-md mx-auto bg-white rounded-lg shadow-sm border border-gray-200 mb-6 relative">
+          {/* Tab Headers */}
+          <div className="flex border-b border-gray-200">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 px-4 py-3 text-sm font-medium text-center transition-colors relative ${
+                  activeTab === tab.id
+                    ? 'text-blue-600 bg-blue-50'
+                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-1">
+                  <span className="text-xs">{tab.icon}</span>
+                  <span>{tab.label}</span>
+                </div>
+                {activeTab === tab.id && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab Content */}
+          <div className="p-4">
+            {renderTabContent()}
+          </div>
+
+          {/* Expand Button - Bottom Right Corner */}
+          <button
+            onClick={() => setIsExpanded(true)}
+            className="absolute bottom-3 right-3 p-2 bg-blue-600 text-white rounded-full shadow-md hover:bg-blue-700 transition-colors z-10"
+            title="Expand to full screen"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+            </svg>
+          </button>
+        </div>
+      )}
+    </>
+  );
+});
 
 // YouTube Video Card Component (refactored for props and mobile design)
 const YouTubeVideoCard = React.memo(function YouTubeVideoCard({ title, videoId, link, isShort }: { title: string; videoId: string; link: string; isShort?: boolean }) {
@@ -1933,6 +2095,19 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+            </section>
+
+            {/* MessageBoard Section */}
+            <section id="messageboard" className="px-4">
+              <MessageBoard 
+                userId={userId}
+                userPassword={userPassword}
+                credits={credits}
+                onCreditsUpdate={(newCredits) => {
+                  setCredits(newCredits);
+                  console.log('🔄 Credits updated:', newCredits);
+                }}
+              />
             </section>
 
             {/* Video Section (replaces old video section) */}
