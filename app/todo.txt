@@ -137,7 +137,7 @@ Features:
 - First emoji costs more, subsequent cheaper
 - Show emoji counts with hover tooltips showing amounts
 - Animated emoji when tipped
-- Tip splitting: 85% author, 15% to ancestors
+- Tip splitting: 3% to system, remaining 85% author,  15% divided evenly among ancestors (if any)
 
 UI:
 - Emoji bar below each post showing reactions with counts

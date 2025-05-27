@@ -1536,13 +1536,13 @@ export default function Home() {
             </div>
           ) : (
             <div className="flex items-center space-x-4">
-              {/* Credits display - only show after initialization */}
+              {/* Credits display - only show after initialization
               {!isInitializing && (
                 <span className="text-sm font-mono text-green-600">
                   ¤{(typeof credits === 'string' ? parseFloat(credits) : credits || 0).toFixed(2)}
                 </span>
               )}
-              <span className="text-sm text-gray-400">/g</span>
+              <span className="text-sm text-gray-400">/g</span> */}
               <button 
                 onClick={openUserModal} 
                 className="text-sm text-green-600 hover:underline cursor-pointer flex items-center gap-1"

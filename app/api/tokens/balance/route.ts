@@ -1,10 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma, safeDbOperation, checkDatabaseHealth } from '@/lib/prisma';
 
 const WITHDRAWAL_COST = 0.01;
 const MINIMUM_WITHDRAWAL = 0.01;
 
 export async function GET(request: NextRequest) {
+  // Check database health first
+  const healthCheck = await checkDatabaseHealth();
+  if (!healthCheck.isHealthy) {
+    console.error('Database health check failed:', healthCheck.error);
+    return NextResponse.json(
+      { 
+        error: 'Database temporarily unavailable. Please try again in a moment.',
+        details: healthCheck.error,
+        retryAfter: 30
+      },
+      { status: 503 }
+    );
+  }
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const password = searchParams.get('password');
@@ -16,42 +30,88 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 400 });
     }
 
-    // Find user by authentication method
-    let user;
+    // Define user type based on expected Prisma user structure
+    type UserData = {
+      id: string;
+      alias: string;
+      password: string;
+      credits: { toString(): string }; // Prisma Decimal type
+      lastWithdrawAt: Date | null;
+      accountActivatedAt: Date;
+      lifetimeAllocated?: { toString(): string }; // Prisma Decimal type
+      lifetimeCollected?: { toString(): string }; // Prisma Decimal type
+      lifetimeCollections?: number;
+      hasLoggedIn: boolean;
+      createdAt?: Date;
+      updatedAt?: Date;
+    };
+
+    // Find user by authentication method with retry logic
+    let userResult: { success: boolean; data?: UserData | null; error?: string };
+
     if (password) {
-      user = await prisma.user.findFirst({ where: { password } });
+      userResult = await safeDbOperation(() => 
+        prisma.user.findFirst({ where: { password } })
+      );
     } else if (userId) {
-      user = await prisma.user.findUnique({ where: { id: userId } });
+      userResult = await safeDbOperation(() => 
+        prisma.user.findUnique({ where: { id: userId } })
+      );
     } else if (sessionId) {
       // Try to find user by sessionId as password first (for session-based users)
-      user = await prisma.user.findFirst({ where: { password: sessionId } });
+      userResult = await safeDbOperation(() => 
+        prisma.user.findFirst({ where: { password: sessionId } })
+      );
       
       // If not found, try the alias-based approach
-      if (!user) {
+      if (userResult.success && !userResult.data) {
         const sessionAlias = `user_${sessionId.slice(0, 8)}`;
-        user = await prisma.user.findFirst({ where: { alias: sessionAlias } });
+        userResult = await safeDbOperation(() => 
+          prisma.user.findFirst({ where: { alias: sessionAlias } })
+        );
         
         // If still not found, create a new user for this session
-        if (!user) {
-          user = await prisma.user.create({
-            data: {
-              password: sessionId, // Use sessionId as password for consistency
-              alias: sessionAlias,
-              hasLoggedIn: true,
-              credits: 0.000777, // Default credits
-            },
-          });
+        if (userResult.success && !userResult.data) {
+          userResult = await safeDbOperation(() => 
+            prisma.user.create({
+              data: {
+                password: sessionId, // Use sessionId as password for consistency
+                alias: sessionAlias,
+                hasLoggedIn: true,
+                credits: 0.000777, // Default credits
+              },
+            })
+          );
         }
       }
+    } else {
+      return NextResponse.json({ error: 'Authentication method required' }, { status: 400 });
     }
 
+    if (!userResult || !userResult.success) {
+      console.error('Database operation failed:', userResult?.error);
+      return NextResponse.json({ 
+        error: 'Database error. Please try again in a moment.',
+        details: userResult?.error
+      }, { status: 503 });
+    }
+
+    const user = userResult.data;
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Get current token rate (with inflation)
-    const rateResponse = await fetch(`${request.nextUrl.origin}/api/tokens/rate`);
-    const { currentRate } = await rateResponse.json();
+    // Get current token rate (with inflation) - with fallback if this fails
+    let currentRate = 0.0001; // Default rate
+    try {
+      const rateResponse = await fetch(`${request.nextUrl.origin}/api/tokens/rate`);
+      if (rateResponse.ok) {
+        const rateData = await rateResponse.json();
+        currentRate = rateData.currentRate || 0.0001;
+      }
+    } catch (error) {
+      console.warn('Failed to fetch current rate, using default:', error);
+    }
 
     // Always use server calculation as the authoritative source
     const now = new Date();
@@ -106,9 +166,16 @@ export async function GET(request: NextRequest) {
           ? (parseFloat((user.lifetimeCollected || 0).toString()) / parseFloat((user.lifetimeAllocated || 0).toString())) * 100 
           : 0,
       },
+      databaseHealth: {
+        isHealthy: healthCheck.isHealthy,
+        latency: healthCheck.latency
+      }
     });
   } catch (error) {
     console.error('Error checking token balance:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 } 

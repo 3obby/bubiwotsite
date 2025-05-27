@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 // POST - Create a new reply to a post or another reply
 export async function POST(request: NextRequest) {
   try {
-    const { content, postId, parentReplyId, password, userId, sessionId, isAnonymous = false } = await request.json();
+    const { content, postId, parentReplyId, password, userId, sessionId, isAnonymous = false, stakeAmount = 0 } = await request.json();
 
     if (!content || content.trim().length === 0) {
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });
@@ -22,6 +22,9 @@ export async function POST(request: NextRequest) {
     if (!password && !userId && !sessionId) {
       return NextResponse.json({ error: 'Authentication required (password, userId, or sessionId)' }, { status: 400 });
     }
+
+    // Validate stake amount
+    const stake = Math.max(0, parseFloat(stakeAmount) || 0);
 
     // Find user by password first, then by userId, then by sessionId
     let user;
@@ -79,14 +82,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calculate cost: 0.05 per character for replies (cheaper than posts)
+    // Calculate cost: 0.05 per character for replies + stake amount
     const characterCost = content.length * 0.05;
-    const protocolFee = 0; // No promotion value for replies, so no protocol fee
-    const totalCost = characterCost + protocolFee;
-    const burnedAmount = characterCost + protocolFee; // All gets burned for replies
+    const protocolFee = 0; // No protocol fee for replies
+    const totalCost = characterCost + stake;
+    const burnedAmount = characterCost; // Only character cost gets burned, stake goes to reply
 
     console.log('Reply cost calculation:', {
       characterCost,
+      stake,
       protocolFee,
       totalCost,
       burnedAmount,
@@ -109,8 +113,8 @@ export async function POST(request: NextRequest) {
           postId,
           authorId: isAnonymous ? userId : user.id, // Use userId even for anonymous to track spending
           donatedValue: 0,
-          stake: 0,
-          effectiveValue: 0,
+          stake: stake,
+          effectiveValue: stake, // Initial effective value is the stake amount
         },
         include: {
           author: isAnonymous ? false : {
@@ -135,16 +139,18 @@ export async function POST(request: NextRequest) {
         data: { credits: newCredits },
       });
 
-      // Record the credit burn
-      await tx.burnedCredit.create({
-        data: {
-          userId: user.id,
-          amount: burnedAmount,
-          action: 'reply-creation',
-          balanceBefore: user.credits,
-          balanceAfter: newCredits,
-        },
-      });
+      // Record the credit burn (only character cost)
+      if (burnedAmount > 0) {
+        await tx.burnedCredit.create({
+          data: {
+            userId: user.id,
+            amount: burnedAmount,
+            action: 'reply-creation',
+            balanceBefore: user.credits,
+            balanceAfter: newCredits,
+          },
+        });
+      }
 
       // Record the transaction
       await tx.transactionRecord.create({
@@ -159,6 +165,7 @@ export async function POST(request: NextRequest) {
             postId,
             parentReplyId: parentReplyId || null,
             characterCost,
+            stake,
             protocolFee,
             totalCost,
             burnedAmount,
