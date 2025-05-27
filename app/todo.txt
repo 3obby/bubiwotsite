@@ -178,37 +178,31 @@ PROMPT 10: Real-time Features and Polish
 "Add real-time updates and polish:
 
 Real-time features:
-- WebSocket or polling for live updates
+- polling for live updates (every 10s)
 - New posts appear without refresh
 - Reaction counts update live
 - Show 'X new posts' notification
 
 Polish items:
-- Loading states for all operations
+- Loading states (showing data) for all operations
 - Error handling with user-friendly messages
-- Optimistic UI updates
-- Keyboard shortcuts (R for reply, etc.)
 - Smooth animations for expand/collapse
 - Mobile-responsive design
-- Dark mode toggle
-- Accessibility features (ARIA labels, keyboard nav)"
 
 PROMPT 11: Time Decay and Expiration Logic
-"Implement the time decay system:
+"let's implement a time decay system- in this reddit-like message board, posts are indexed by value. that value should entitle a post to exist, and should decay over time, enabling the author to reclaim any released portion of their stake (if any) at any time. in addition, posts may recieve tips/bonuses that serve to both extend the post lifespan (up to a max of 90 days) and donate value to the author. 
 
 Decay function:
-- effectiveValue = baseStake * e^(-λt) + totalDonations * e^(-λt_donation)
-- Lambda value configurable per content type
+- effectiveValue = baseStake * e^(-λt) + totalDonations * e^(-λt_donation) (your opinionated implementation is fine)
 - Real-time decay calculation in feed sorting
 
 Expiration handling:
-- Visual countdown timers on posts
-- 'Reclaim' button when expired
+- Visual countdown timers on posts (simple-style, like '~90d...', '~3h...')
+- 'Reclaim' button on posts the user has authored
 - Archive expired posts or mark inactive
 - Reclaim process returns remaining stake + bonuses
 
-Background job:
-- Hourly calculation of all effective values
+regular calculation of all effective values should not be necessary- the re-ranking should trigger when new posts are triggered, causing a recursive chain of updates down the branch. please ensure the 'create post', 'donate', and 'emoji' workflows each trigger a server-side call to re-calculate the time decay of posts at that level/depth. this should:
 - Update database with current values
 - Clean up truly expired content"
 

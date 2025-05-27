@@ -57,13 +57,20 @@ export default function TokenCollectButton({ accruedValue, onTokensCollected, us
       
       console.log('📤 Request body:', requestBody);
 
+      // Add timeout to prevent endless loading
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       const response = await fetch('/api/tokens/collect', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestBody),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       const data = await response.json();
       console.log('📥 Server response:', {
@@ -74,9 +81,7 @@ export default function TokenCollectButton({ accruedValue, onTokensCollected, us
 
       if (!response.ok) {
         console.error('❌ Collection failed:', data.error);
-        setError(data.error);
-        // Briefly show error, then clear it
-        setTimeout(() => setError(null), 3000);
+        setError(data.error || 'Collection failed');
         return;
       }
 
@@ -95,11 +100,20 @@ export default function TokenCollectButton({ accruedValue, onTokensCollected, us
       console.log('🎉 Direct token collection completed successfully');
     } catch (err) {
       console.error('💥 Error collecting tokens:', err);
-      setError('Failed to collect tokens');
-      // Briefly show error, then clear it
-      setTimeout(() => setError(null), 3000);
+      
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Request timed out. Please try again.');
+      } else {
+        setError('Failed to collect tokens. Please try again.');
+      }
     } finally {
+      // Always reset loading state
       setIsCollecting(false);
+      
+      // Clear error after a delay
+      if (error) {
+        setTimeout(() => setError(null), 5000);
+      }
     }
   };
 

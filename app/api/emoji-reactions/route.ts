@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { calculateEffectiveValue, calculateExpirationTime, recalculatePostValues, cleanupExpiredContent } from '@/lib/timeDecay';
 
 // POST - Add emoji reaction (with micro-tip)
 export async function POST(request: NextRequest) {
@@ -187,6 +188,90 @@ export async function POST(request: NextRequest) {
           });
         }
 
+        // Update the target post/reply with the tip amount and recalculate decay
+        if (postId) {
+          const currentPost = await tx.post.findUnique({
+            where: { id: postId },
+            select: { 
+              stake: true, 
+              donatedValue: true, 
+              createdAt: true,
+              valueDonations: {
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+                select: { createdAt: true }
+              }
+            }
+          });
+          
+          if (currentPost) {
+            const now = new Date();
+            const newDonatedValue = parseFloat(currentPost.donatedValue.toString()) + tipAmount;
+            const newEffectiveValue = calculateEffectiveValue(
+              parseFloat(currentPost.stake.toString()),
+              newDonatedValue,
+              currentPost.createdAt,
+              now
+            );
+            const newExpiresAt = calculateExpirationTime(
+              parseFloat(currentPost.stake.toString()),
+              newDonatedValue,
+              currentPost.createdAt,
+              now
+            );
+            
+            await tx.post.update({
+              where: { id: postId },
+              data: {
+                donatedValue: newDonatedValue,
+                totalValue: parseFloat(currentPost.stake.toString()) + newDonatedValue,
+                effectiveValue: newEffectiveValue,
+                expiresAt: newExpiresAt
+              }
+            });
+          }
+        } else if (replyId) {
+          const currentReply = await tx.reply.findUnique({
+            where: { id: replyId },
+            select: { 
+              stake: true, 
+              donatedValue: true, 
+              createdAt: true,
+              valueDonations: {
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+                select: { createdAt: true }
+              }
+            }
+          });
+          
+          if (currentReply) {
+            const now = new Date();
+            const newDonatedValue = parseFloat(currentReply.donatedValue.toString()) + tipAmount;
+            const newEffectiveValue = calculateEffectiveValue(
+              parseFloat(currentReply.stake.toString()),
+              newDonatedValue,
+              currentReply.createdAt,
+              now
+            );
+            const newExpiresAt = calculateExpirationTime(
+              parseFloat(currentReply.stake.toString()),
+              newDonatedValue,
+              currentReply.createdAt,
+              now
+            );
+            
+            await tx.reply.update({
+              where: { id: replyId },
+              data: {
+                donatedValue: newDonatedValue,
+                effectiveValue: newEffectiveValue,
+                expiresAt: newExpiresAt
+              }
+            });
+          }
+        }
+
         // Tip to ancestors (12% split evenly)
         for (const ancestorId of ancestors) {
           if (ancestorId && perAncestorShare > 0) {
@@ -260,6 +345,27 @@ export async function POST(request: NextRequest) {
 
       return reaction;
     });
+
+    // Trigger background recalculation for the affected post and cleanup
+    try {
+      if (postId) {
+        await recalculatePostValues(postId);
+      } else if (replyId) {
+        // For replies, we need to get the post ID first
+        const reply = await prisma.reply.findUnique({
+          where: { id: replyId },
+          select: { postId: true }
+        });
+        if (reply) {
+          await recalculatePostValues(reply.postId);
+        }
+      }
+      const cleanupResult = await cleanupExpiredContent();
+      console.log(`Background update after emoji reaction: ${cleanupResult.postsArchived} posts archived`);
+    } catch (bgError) {
+      console.error('Background recalculation failed (non-critical):', bgError);
+      // Don't fail the request if background processing fails
+    }
 
     return NextResponse.json(result);
   } catch (error) {

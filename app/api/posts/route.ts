@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { safeDbOperation, checkDatabaseHealth, connectWithRetry, prisma } from '@/lib/prisma';
+import { calculateExpirationTime, recalculateAllEffectiveValues, cleanupExpiredContent } from '@/lib/timeDecay';
 
 // POST - Create a new post
 export async function POST(request: NextRequest) {
@@ -135,6 +136,9 @@ export async function POST(request: NextRequest) {
             authorId: isAnonymous ? null : user.id, // Set to null if anonymous
             promotionValue: postValue, // Only the promotion value, not including protocol fee
             totalValue: postValue, // Initially just the promotion value (no protocol fee)
+            stake: postValue, // Initial stake is the promotion value
+            effectiveValue: postValue, // Initial effective value equals stake
+            expiresAt: calculateExpirationTime(postValue, 0, new Date()), // Calculate initial expiration
           },
         });
 
@@ -228,6 +232,18 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`Post creation completed successfully for ${transactionResult.id}`);
+    
+    // Trigger background recalculation of all effective values and cleanup
+    // This ensures the new post affects the ranking and expired content is cleaned up
+    try {
+      const recalcResult = await recalculateAllEffectiveValues();
+      const cleanupResult = await cleanupExpiredContent();
+      console.log(`Background update completed: ${recalcResult.postsUpdated} posts, ${recalcResult.repliesUpdated} replies updated, ${cleanupResult.postsArchived} posts archived`);
+    } catch (bgError) {
+      console.error('Background recalculation failed (non-critical):', bgError);
+      // Don't fail the request if background processing fails
+    }
+    
     return NextResponse.json(completePostResult.data);
 
   } catch (error) {

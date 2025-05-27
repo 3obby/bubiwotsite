@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { calculateEffectiveValue, calculateExpirationTime, recalculatePostValues, cleanupExpiredContent } from '@/lib/timeDecay';
 
 export async function POST(request: NextRequest) {
   try {
@@ -81,9 +82,31 @@ export async function POST(request: NextRequest) {
 
       // Update post total value
       const newTotalValue = parseFloat(post.totalValue.toString()) + amount;
+      const newDonatedValue = parseFloat(post.donatedValue.toString()) + amount;
+      
+      // Calculate new effective value and expiration with the donation
+      const now = new Date();
+      const newEffectiveValue = calculateEffectiveValue(
+        parseFloat(post.stake.toString()),
+        newDonatedValue,
+        post.createdAt,
+        now
+      );
+      const newExpiresAt = calculateExpirationTime(
+        parseFloat(post.stake.toString()),
+        newDonatedValue,
+        post.createdAt,
+        now
+      );
+      
       const updatedPost = await tx.post.update({
         where: { id: postId },
-        data: { totalValue: newTotalValue },
+        data: { 
+          totalValue: newTotalValue,
+          donatedValue: newDonatedValue,
+          effectiveValue: newEffectiveValue,
+          expiresAt: newExpiresAt
+        },
         include: {
           author: {
             select: {
@@ -128,6 +151,16 @@ export async function POST(request: NextRequest) {
 
       return updatedPost;
     });
+
+    // Trigger background recalculation for this post and cleanup
+    try {
+      await recalculatePostValues(postId);
+      const cleanupResult = await cleanupExpiredContent();
+      console.log(`Background update after donation: post ${postId} updated, ${cleanupResult.postsArchived} posts archived`);
+    } catch (bgError) {
+      console.error('Background recalculation failed (non-critical):', bgError);
+      // Don't fail the request if background processing fails
+    }
 
     return NextResponse.json(result);
   } catch (error) {

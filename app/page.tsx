@@ -1509,7 +1509,7 @@ export default function Home() {
         </div>
 
         {/* Center Navigation */}
-        <div className="flex flex-col items-center gap-1">
+        <div className="absolute left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-1">
           <Link 
             href="/protowhitepaper/" 
             className="text-sm text-blue-600 hover:underline font-medium"
@@ -1535,14 +1535,7 @@ export default function Home() {
               <span className="text-sm text-gray-400 line-through">/g</span>
             </div>
           ) : (
-            <div className="flex items-center space-x-4">
-              {/* Credits display - only show after initialization
-              {!isInitializing && (
-                <span className="text-sm font-mono text-green-600">
-                  ¤{(typeof credits === 'string' ? parseFloat(credits) : credits || 0).toFixed(2)}
-                </span>
-              )}
-              <span className="text-sm text-gray-400">/g</span> */}
+            <div className="flex flex-col items-end space-y-1">
               <button 
                 onClick={openUserModal} 
                 className="text-sm text-green-600 hover:underline cursor-pointer flex items-center gap-1"
@@ -1554,6 +1547,16 @@ export default function Home() {
                   </span>
                 )}
               </button>
+              {/* Credits display beneath username */}
+              <div className="text-xs font-mono text-blue-600">
+                {isInitializing || isLoadingDetailedData ? (
+                  <span className="animate-pulse">
+                    ¤{'.'.repeat((Math.floor(Date.now() / 500) % 3) + 1)}
+                  </span>
+                ) : (
+                  `¤${(typeof credits === 'string' ? parseFloat(credits) : credits || 0).toFixed(3)}`
+                )}
+              </div>
             </div>
           )}
         </div>

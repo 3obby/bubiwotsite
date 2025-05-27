@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { calculateExpirationTime, recalculatePostValues, cleanupExpiredContent } from '@/lib/timeDecay';
 
 // POST - Create a new reply to a post or another reply
 export async function POST(request: NextRequest) {
@@ -115,6 +116,7 @@ export async function POST(request: NextRequest) {
           donatedValue: 0,
           stake: stake,
           effectiveValue: stake, // Initial effective value is the stake amount
+          expiresAt: calculateExpirationTime(stake, 0, new Date()), // Calculate initial expiration
         },
         include: {
           author: isAnonymous ? false : {
@@ -178,6 +180,16 @@ export async function POST(request: NextRequest) {
 
       return reply;
     });
+
+    // Trigger background recalculation for the parent post and cleanup
+    try {
+      await recalculatePostValues(postId);
+      const cleanupResult = await cleanupExpiredContent();
+      console.log(`Background update after reply creation: post ${postId} updated, ${cleanupResult.postsArchived} posts archived`);
+    } catch (bgError) {
+      console.error('Background recalculation failed (non-critical):', bgError);
+      // Don't fail the request if background processing fails
+    }
 
     return NextResponse.json(result);
   } catch (error) {
