@@ -10,14 +10,14 @@ const documentContent = `
 
 ## Act I — MVP
 
-X Generate identity keypair in session
-X Create persistent account with credit counter
-X Start passive token accrual
-X Enable alias assignment
-- Send tokens to peers
-X Deploy mobile-first webapp
-X Add value-ranked global message board
-X Track user/posts/credits in database
+✓ Generate identity keypair in session  
+✓ Create persistent account with credit counter  
+✓ Start passive token accrual  
+✓ Enable alias assignment  
+• Send tokens to peers  
+✓ Deploy mobile-first webapp  
+✓ Add value-ranked global message board  
+✓ Track user/posts/credits in database
 
 ---
 
@@ -44,7 +44,7 @@ X Track user/posts/credits in database
 
 ## Act IV — Identity Market
 
-- Allow paid “is this you?” checks
+- Allow paid "is this you?" checks
 - Reward confirmations with BUBI
 - Add staking/slashing for false claims
 - Enable encrypted private messages
