@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import EmojiPicker from './EmojiPicker';
 import EmojiReactions from './EmojiReactions';
+import { config } from '@/lib/config';
 
 // TypeScript interfaces
 interface Author {
@@ -130,7 +131,7 @@ const ReplyModal: React.FC<{
 
   if (!isOpen || !replyData) return null;
 
-  const characterCost = content.length * 0.05;
+  const characterCost = content.length * config.costs.messaging.replyCharacterCost;
   const totalCost = characterCost + stakeAmount;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -515,7 +516,7 @@ const PostForm: React.FC<{
     }
   };
 
-  const characterCost = content.length * 0.01;
+  const characterCost = content.length * config.costs.messaging.globalFeedCharacterCost;
   const totalCost = characterCost + promotionValue;
 
   return (
@@ -749,7 +750,7 @@ const GlobalFeed: React.FC<GlobalFeedProps> = ({
       }
 
       // Calculate total cost for validation
-      const characterCost = content.length * 0.01;
+      const characterCost = content.length * config.costs.messaging.globalFeedCharacterCost;
       const totalCost = characterCost + promotionValue;
       
       // Check if we have enough credits after sync
@@ -844,7 +845,7 @@ const GlobalFeed: React.FC<GlobalFeedProps> = ({
       
       // Update credits if callback provided
       if (onCreditsUpdate && credits !== undefined) {
-        const characterCost = content.length * 0.05;
+        const characterCost = content.length * config.costs.messaging.replyCharacterCost;
         const totalCost = characterCost + stakeAmount;
         onCreditsUpdate(credits - totalCost);
       }

@@ -8,6 +8,9 @@ import TokenCollectButton from '@/components/TokenCollectButton';
 import GlobalFeed from '@/components/GlobalFeed';
 import TransactionHistory from '@/components/TransactionHistory';
 import UsersTab from '@/components/UsersTab';
+import PreferencesPanel from '@/components/PreferencesPanel';
+import { config } from '@/lib/config';
+import MermaidDiagram from '@/components/MermaidDiagram';
 
 // Generate a UUID (v4, lightweight)
 function uuidv4() {
@@ -746,7 +749,7 @@ export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userPassword, setUserPassword] = useState("");
   const [hasLoggedIn, setHasLoggedIn] = useState(false);
-  const [credits, setCredits] = useState(0.000777); // Default to 0.000777 credits
+  const [credits, setCredits] = useState(config.tokenEconomy.defaultCredits); // Use config value instead of hardcoded 0.000777
   const [accruedValue, setAccruedValue] = useState<number>(0);
   const [isTokenEconomicsOpen, setIsTokenEconomicsOpen] = useState(false); // New state for token economics accordion
   const [showGlobalDistribution, setShowGlobalDistribution] = useState(false); // New state for global distribution
@@ -1122,7 +1125,7 @@ export default function Home() {
             setUserPassword(data.password);
             setHasLoggedIn(false);
             setIsLoggedIn(true);
-            setCredits(parseFloat(data.credits) || 0.000777);
+            setCredits(parseFloat(data.credits) || config.tokenEconomy.defaultCredits);
             
             if (data.createdAt) setUserCreatedAt(new Date(data.createdAt));
             if (data.updatedAt) setUserUpdatedAt(new Date(data.updatedAt));
@@ -1253,7 +1256,7 @@ export default function Home() {
       
       // Update state with new alias and credits
       setAlias(data.alias);
-      setCredits(parseFloat(data.credits) || 0);
+      setCredits(parseFloat(data.credits) || config.tokenEconomy.defaultCredits);
       
       // Update in localStorage
       localStorage.setItem('bubiwot_user_alias', data.alias);
@@ -1292,7 +1295,7 @@ export default function Home() {
       setAlias(data.alias);
       setUserPassword(data.password);
       setHasLoggedIn(data.hasLoggedIn);
-      setCredits(parseFloat(data.credits) || 0);
+      setCredits(parseFloat(data.credits) || config.tokenEconomy.defaultCredits);
       setIsLoggedIn(true);
       
       // Update in localStorage
@@ -1414,7 +1417,7 @@ export default function Home() {
         if (Math.abs(serverData.credits - credits) > 0.00000001) {
           console.warn('⚠️ Client/server credits mismatch detected!');
           console.log('🔄 Updating client state to match server...');
-          setCredits(parseFloat(serverData.credits) || 0);
+          setCredits(parseFloat(serverData.credits) || config.tokenEconomy.defaultCredits);
         }
       }
     } catch (error) {
@@ -1562,6 +1565,9 @@ export default function Home() {
             </svg>
             Roadmap
           </Link>
+          <div className="flex items-center gap-2">
+            <MermaidDiagram />
+          </div>
           <a
             href="https://github.com/3obby/bubiwotsite/tree/main/app/protowhitepaper"
             target="_blank"
@@ -2125,6 +2131,11 @@ export default function Home() {
                   console.log('🔄 Credits updated:', newCredits);
                 }}
               />
+            </section>
+
+            {/* Preferences & Configuration Panel */}
+            <section id="preferences" className="px-4">
+              <PreferencesPanel />
             </section>
 
             {/* Video Section (replaces old video section) */}

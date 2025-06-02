@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
+import { NextResponse } from 'next/server';
+import { config } from '@/lib/config';
 
 // Define the standard type for write actions
 export type WriteAction = {
@@ -145,4 +147,32 @@ export async function processWriteAction(
       message: `Failed to process ${action.description}. See server logs.`
     };
   }
+}
+
+export interface WriteOperation {
+  name: string;
+  cost: number;
+  description: string;
+}
+
+// Available write operations with their costs
+export const WRITE_OPERATIONS: Record<string, WriteOperation> = {
+  'update_alias': {
+    name: 'Update Alias',
+    cost: config.costs.actions.updateAlias,
+    description: 'Change your display name'
+  },
+  'switch_account': {
+    name: 'Switch Account', 
+    cost: config.costs.actions.fundAccount,
+    description: 'Switch to a different account using password'
+  }
+};
+
+// Handler for write operation metadata
+export async function GET() {
+  return NextResponse.json({
+    operations: WRITE_OPERATIONS,
+    description: 'Available write operations and their costs'
+  });
 } 

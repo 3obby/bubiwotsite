@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
+import { config } from '@/lib/config';
 import { Decimal } from '@prisma/client/runtime/library';
 
-const prisma = new PrismaClient();
-
 // Constants
-const RENAME_COST = 0.000777; // Cost to change username
+const RENAME_COST = config.costs.actions.updateAlias; // Cost to change username
 
 export async function POST(req: NextRequest) {
   try {

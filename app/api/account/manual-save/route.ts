@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
+import { config } from '@/lib/config';
 import { Decimal } from '@prisma/client/runtime/library';
 
-const prisma = new PrismaClient();
-
 // Constants
-const BASE_RATE = 0.0001; // ¤/sec, consistent with other components
-const MANUAL_SAVE_COST = 0.1; // Cost for manual save
+const BASE_RATE = config.tokenEconomy.baseRate; // ¤/sec, consistent with other components
+const MANUAL_SAVE_COST = config.costs.actions.manualSave; // Cost for manual save
 
 // Check if we need to create a new global balance record (limit to once per hour)
 async function shouldCreateGlobalBalance(): Promise<boolean> {

@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
+import { config } from '@/lib/config';
 
 interface EmojiPickerProps {
   isOpen: boolean;
@@ -69,8 +70,8 @@ const EmojiPicker: React.FC<EmojiPickerProps> = ({
 
   if (!isOpen) return null;
 
-  const baseCost = 0.001;
-  const systemFee = tipAmount * 0.03;
+  const baseCost = config.costs.actions.emojiBaseCost;
+  const systemFee = tipAmount * config.costs.fees.systemFeeRate;
   const totalCost = baseCost + tipAmount + systemFee;
 
   const handleEmojiClick = (emoji: string) => {

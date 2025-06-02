@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { calculateEffectiveValue, calculateExpirationTime, recalculatePostValues, cleanupExpiredContent } from '@/lib/timeDecay';
+import { config } from '@/lib/config';
 
 // POST - Add emoji reaction (with micro-tip)
 export async function POST(request: NextRequest) {
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
             password: sessionId,
             alias: sessionAlias,
             hasLoggedIn: true,
-            credits: 0.000777,
+            credits: config.tokenEconomy.defaultCredits,
           },
         });
       }
@@ -107,9 +108,9 @@ export async function POST(request: NextRequest) {
     });
 
     // Calculate costs
-    const baseCost = 0.001; // Base cost for first emoji
-    const additionalCost = existingReaction ? 0.0005 : 0; // Cheaper for subsequent
-    const systemFee = tipAmount * 0.03; // 3% to system
+    const baseCost = config.costs.actions.emojiBaseCost; // Base cost for first emoji
+    const additionalCost = existingReaction ? config.costs.actions.emojiAdditionalCost : 0; // Cheaper for subsequent
+    const systemFee = tipAmount * config.costs.fees.systemFeeRate; // 3% to system
     const totalCost = baseCost + additionalCost + tipAmount + systemFee;
 
     // Check if user has sufficient credits
@@ -120,8 +121,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate tip distribution
-    const authorShare = tipAmount * 0.85; // 85% to author
-    const ancestorShare = tipAmount * 0.12; // 12% to ancestors (3% already taken by system)
+    const authorShare = tipAmount * config.costs.fees.authorShare; // 85% to author
+    const ancestorShare = tipAmount * config.costs.fees.ancestorShare; // 12% to ancestors (3% already taken by system)
     const ancestorCount = ancestors.length;
     const perAncestorShare = ancestorCount > 0 ? ancestorShare / ancestorCount : 0;
 

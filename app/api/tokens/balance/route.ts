@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma, safeDbOperation, checkDatabaseHealth } from '@/lib/prisma';
+import { config } from '@/lib/config';
 
-const WITHDRAWAL_COST = 0.01;
-const MINIMUM_WITHDRAWAL = 0.01;
+const WITHDRAWAL_COST = config.tokenEconomy.withdrawalCost;
+const MINIMUM_WITHDRAWAL = config.tokenEconomy.minimumWithdrawal;
 
 export async function GET(request: NextRequest) {
   // Check database health first
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
                 password: sessionId, // Use sessionId as password for consistency
                 alias: sessionAlias,
                 hasLoggedIn: true,
-                credits: 0.000777, // Default credits
+                credits: config.tokenEconomy.defaultCredits, // Use config value
               },
             })
           );
@@ -117,7 +118,7 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const lastWithdraw = user.lastWithdrawAt || user.accountActivatedAt;
     const secondsElapsed = (now.getTime() - lastWithdraw.getTime()) / 1000;
-    const accruedTokens = secondsElapsed * 0.0001; // ¤0.0001 per second (fixed rate)
+    const accruedTokens = secondsElapsed * config.tokenEconomy.baseRate; // ¤0.0001 per second (fixed rate)
 
     // Log client vs server comparison for monitoring (but don't reject)
     if (clientAccruedAmount && !isNaN(parseFloat(clientAccruedAmount))) {

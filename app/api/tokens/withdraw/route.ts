@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { config } from '@/lib/config';
 
 // GET - Check accumulated tokens without withdrawing
 export async function GET(request: NextRequest) {
@@ -41,10 +42,10 @@ export async function GET(request: NextRequest) {
     const secondsElapsed = (now.getTime() - lastWithdraw.getTime()) / 1000;
     
     // Token rate: ¤0.0001 per second
-    const tokensEarned = secondsElapsed * 0.0001;
+    const tokensEarned = secondsElapsed * config.tokenEconomy.baseRate;
     
     // Transaction cost: ¤0.01
-    const transactionCost = 0.01;
+    const transactionCost = config.tokenEconomy.withdrawalCost;
     
     // Net tokens that would be credited
     const netTokens = tokensEarned - transactionCost;
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
       secondsElapsed: Math.floor(secondsElapsed),
       canWithdraw,
       currentBalance: parseFloat(user.credits.toString()),
-      timeToNextEligible: netTokens <= 0 ? Math.ceil((transactionCost - tokensEarned) / 0.0001) : 0,
+      timeToNextEligible: netTokens <= 0 ? Math.ceil((transactionCost - tokensEarned) / config.tokenEconomy.baseRate) : 0,
       lastWithdrawAt: user.lastWithdrawAt,
       accountActivatedAt: user.accountActivatedAt,
     });
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
             password: sessionId,
             alias: sessionAlias,
             hasLoggedIn: true,
-            credits: 0.000777,
+            credits: config.tokenEconomy.defaultCredits,
             accountActivatedAt: new Date(),
           },
         });
@@ -119,10 +120,10 @@ export async function POST(request: NextRequest) {
     const secondsElapsed = (now.getTime() - lastWithdraw.getTime()) / 1000;
     
     // Token rate: ¤0.0001 per second
-    const tokensEarned = secondsElapsed * 0.0001;
+    const tokensEarned = secondsElapsed * config.tokenEconomy.baseRate;
     
     // Transaction cost: ¤0.01
-    const transactionCost = 0.01;
+    const transactionCost = config.tokenEconomy.withdrawalCost;
     
     // Net tokens to credit (earned minus transaction cost)
     const netTokens = tokensEarned - transactionCost;
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest) {
         tokensEarned: parseFloat(tokensEarned.toFixed(8)),
         transactionCost,
         secondsElapsed: Math.floor(secondsElapsed),
-        timeToNextEligible: Math.ceil((transactionCost - tokensEarned) / 0.0001)
+        timeToNextEligible: Math.ceil((transactionCost - tokensEarned) / config.tokenEconomy.baseRate)
       }, { status: 400 });
     }
 

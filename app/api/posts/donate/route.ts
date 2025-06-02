@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { calculateEffectiveValue, calculateExpirationTime, recalculatePostValues, cleanupExpiredContent } from '@/lib/timeDecay';
+import { config } from '@/lib/config';
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
             password: sessionId,
             alias: sessionAlias,
             hasLoggedIn: true,
-            credits: 0.000777,
+            credits: config.tokenEconomy.defaultCredits,
           },
         });
         console.log(`Created new user for session ${sessionId}:`, user);

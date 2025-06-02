@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
+import { config } from '@/lib/config';
 import { Decimal } from '@prisma/client/runtime/library';
 
-const prisma = new PrismaClient();
-
 // Constants
-const BASE_RATE = 0.0001; // ¤/sec, consistent with other components
-const MIN_FUNDING_AMOUNT = 0.000777; // Minimum amount to fund an account
+const BASE_RATE = config.tokenEconomy.baseRate; // ¤/sec, consistent with other components
+const MIN_FUNDING_AMOUNT = config.thresholds.minimumFunding; // Minimum amount to fund an account
 
 // Check if we need to create a new global balance record (limit to once per hour)
 async function shouldCreateGlobalBalance(): Promise<boolean> {

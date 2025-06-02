@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { config } from '@/lib/config';
 
-// Base rate: ¤0.0001 per second
-const BASE_RATE = 0.0001;
-// 3% annual inflation rate
-const ANNUAL_INFLATION_RATE = 0.03;
+const BASE_RATE = config.tokenEconomy.baseRate;
+const ANNUAL_INFLATION_RATE = config.tokenEconomy.annualInflationRate;
 
 export async function GET() {
   try {

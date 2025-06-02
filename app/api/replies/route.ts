@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { calculateExpirationTime, recalculatePostValues, cleanupExpiredContent } from '@/lib/timeDecay';
+import { config } from '@/lib/config';
 
 // POST - Create a new reply to a post or another reply
 export async function POST(request: NextRequest) {
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
             password: sessionId,
             alias: sessionAlias,
             hasLoggedIn: true,
-            credits: 0.000777,
+            credits: config.tokenEconomy.defaultCredits,
           },
         });
         console.log(`Created new user for session ${sessionId}:`, user);
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate cost: 0.05 per character for replies + stake amount
-    const characterCost = content.length * 0.05;
+    const characterCost = content.length * config.costs.messaging.replyCharacterCost;
     const protocolFee = 0; // No protocol fee for replies
     const totalCost = characterCost + stake;
     const burnedAmount = characterCost; // Only character cost gets burned, stake goes to reply

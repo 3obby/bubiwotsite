@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { config } from '@/lib/config';
 
-const WITHDRAWAL_COST = 0.01;
+const WITHDRAWAL_COST = config.tokenEconomy.withdrawalCost;
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
               password: sessionId,
               alias: sessionAlias,
               hasLoggedIn: true,
-              credits: 0.000777,
+              credits: config.tokenEconomy.defaultCredits,
               accountActivatedAt: new Date(),
             },
           });
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
     const lastWithdraw = user.lastWithdrawAt || user.accountActivatedAt;
     const timeSinceLastWithdraw = now.getTime() - lastWithdraw.getTime();
     const secondsSinceLastWithdraw = timeSinceLastWithdraw / 1000;
-    const serverCalculatedAccrued = secondsSinceLastWithdraw * 0.0001; // ¤0.0001 per second
+    const serverCalculatedAccrued = secondsSinceLastWithdraw * config.tokenEconomy.baseRate; // ¤0.0001 per second
     
     console.log('⏰ Server-side accrual calculation:');
     console.log('  📅 Last withdraw time:', lastWithdraw);

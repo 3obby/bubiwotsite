@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { safeDbOperation, checkDatabaseHealth, connectWithRetry, prisma } from '@/lib/prisma';
 import { calculateExpirationTime, recalculateAllEffectiveValues, cleanupExpiredContent } from '@/lib/timeDecay';
+import { config } from '@/lib/config';
 
 // POST - Create a new post
 export async function POST(request: NextRequest) {
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
               password: sessionId,
               alias: sessionAlias,
               hasLoggedIn: true,
-              credits: 0.000777,
+              credits: config.tokenEconomy.defaultCredits,
             },
           });
           console.log(`Created new user for session ${sessionId}:`, user);
@@ -86,8 +87,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate total cost: 0.1 per character + promotion value + 3% protocol fee
-    const characterCost = content.length * 0.1;
-    const protocolFee = promotionValue * 0.03; // 3% protocol fee that gets burned
+    const characterCost = content.length * config.costs.messaging.postCharacterCost;
+    const protocolFee = promotionValue * config.costs.fees.protocolFeeRate; // 3% protocol fee that gets burned
     const totalCost = characterCost + promotionValue + protocolFee;
     
     // Calculate what gets burned vs what goes to post
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
     console.log(`Creating post for user ${user.id}:`);
     console.log(`  - Character cost: ${characterCost} (burned)`);
     console.log(`  - Promotion value: ${promotionValue} (to post)`);
-    console.log(`  - Protocol fee (3%): ${protocolFee} (burned)`);
+    console.log(`  - Protocol fee (${config.costs.fees.protocolFeeRate * 100}%): ${protocolFee} (burned)`);
     console.log(`  - Total cost: ${totalCost}`);
     console.log(`  - Total burned: ${burnedAmount}`);
 

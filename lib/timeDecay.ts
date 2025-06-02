@@ -1,15 +1,16 @@
 import { prisma } from '@/lib/prisma';
+import { config } from '@/lib/config';
 
 // Decay configuration
 export const DECAY_CONFIG = {
   // Decay rate (lambda) - higher value means faster decay
-  lambda: 0.0001, // Approximately 1% decay per day
+  lambda: config.timeDecay.lambda, // Approximately 1% decay per day
   
   // Maximum post lifespan in milliseconds
   maxLifespanMs: 90 * 24 * 60 * 60 * 1000, // 90 days
   
   // Minimum effective value before considering expired
-  minEffectiveValue: 0.001,
+  minEffectiveValue: config.timeDecay.minEffectiveValue,
   
   // Grace period before actually expiring (in milliseconds)
   gracePeriodMs: 24 * 60 * 60 * 1000, // 24 hours
