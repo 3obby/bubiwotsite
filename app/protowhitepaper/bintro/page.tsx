@@ -8,84 +8,174 @@ import MarkdownContent from '../../../components/MarkdownContent';
 const documentContent = `
 # Introduction to BUBIWOT Protocol
 
+**Layer-Zero for the Trust-Minimized Web of Trust**
+
 Towards:
 - Trust-minimized proof-of-personhood.
 - Next-gen authentication.
 - Next-gen account management.
 - Universal basic income.
+- Social cryptographic primitives.
 
 ### What is BUBIWOT?
 
-BUBIWOT (Bitcoin-backed Universal Basic Income Web of Trust) is a revolutionary protocol that combines the economic security of Bitcoin with the social promise of Universal Basic Income. It creates a trust-minimized system for distributing Bitcoin-backed UBI tokens to real humans through anonymous peer attestations.
+BUBIWOT (Bitcoin-backed Universal Basic Income Web of Trust) is the **foundational layer-zero protocol** for a new cryptographic primitive: the **trust-minimized web of trust**. 
+
+While initially designed for Bitcoin-backed Universal Basic Income distribution, BUBIWOT establishes the fundamental infrastructure for any application requiring trust-minimized human verification, social recovery, and decentralized identity management.
+
+The protocol creates a revolutionary system where **every real-world interaction serves dual cryptographic purposes**: proving humanity for economic participation AND building threshold signature recovery networks.
+
+### The Trust-Minimized Web of Trust Primitive
+
+BUBIWOT introduces a new cryptographic primitive that enables:
+
+**🤝 Dual-Purpose IRL Attestations**
+- **Humanity Verification**: Cryptographic proof of human uniqueness without revealing identity
+- **Key Fragment Exchange**: Threshold signature share distribution for social recovery
+- **Progressive Trust Building**: Each interaction strengthens both verification and recovery networks
+
+**🔐 Threshold Social Recovery**
+- **Incremental Decentralization**: Start with single device, progressively add guardians
+- **Flexible Security Models**: 2-of-3 → 3-of-5 → 4-of-7 thresholds adapt to social network growth
+- **Bitcoin-Native Recovery**: FROST signatures work directly with Bitcoin/Lightning
+
+**🌐 Network-Effect Trust**
+- **Cryptographic Social Graphs**: Anonymous attestations create verifiable trust networks
+- **Sybil Resistance**: Physical attestations prevent fake account proliferation
+- **Reputation Layers**: Trust scores emerge from attestation quality and frequency
 
 ### Core Principles
 
-- **Trust Minimization**: No central authority controls the distribution or verification process
-- **Proof of Humanity**: Real humans are verified through peer attestations, not centralized systems
-- **Bitcoin-Backed Value**: UBI tokens are backed by Bitcoin reserves, ensuring strong economic security
-- **Censorship Resistance**: Decentralized architecture prevents any single entity from controlling access
-- **Privacy First**: Anonymous attestations protect user identity while ensuring authenticity
-- **Bot-Resistant**: This architecture is specifically designed to be resistant to bots and other forms of automated abuse
+- **Trust Minimization**: No central authority controls verification, distribution, or recovery processes
+- **IRL-First Architecture**: Physical meetings create the strongest cryptographic trust bonds
+- **Progressive Decentralization**: Security and trust models upgrade incrementally with social network growth
+- **Bitcoin-Native Implementation**: Direct integration with Bitcoin, Lightning, and threshold cryptography
+- **Privacy-Preserving**: Anonymous attestations protect identity while ensuring authenticity
+- **Dual-Purpose Efficiency**: Every interaction serves multiple cryptographic functions simultaneously
 
-### How It Works
+### How the Primitive Works
 
-The BUBIWOT protocol builds a new crypographic primitive- the trust-minimized web of trust- on three fundamental layers:
+The trust-minimized web of trust operates on **four fundamental layers**:
 
-#### 1. Identity Layer
-- Users generate cryptographic keypairs client-side
-- Private keys are secured locally using biometric authentication (WebAuthn/passkeys)
-- No personal information is stored or required
+#### 1. Cryptographic Identity Layer
+- **Client-Side Key Generation**: Ed25519 keypairs generated locally
+- **Biometric Protection**: WebAuthn/passkeys secure private keys on-device
+- **Threshold Migration**: Single keys evolve into socially-recoverable threshold signatures
+- **No Personal Data**: Only cryptographic identities, never personal information
 
-#### 2. Peer Layer
-- Users vouch for each other's humanity through cryptographic signatures
-- Attestations enable webs of trust
-- A threshold of attestations (k-of-n) is required for verification
+#### 2. Physical Attestation Layer
+- **IRL Pairing**: QR/NFC-based secure local connections
+- **Mutual Verification**: Peers simultaneously verify each other's humanity
+- **Key Fragment Exchange**: FROST threshold shares distributed during attestations
+- **Cryptographic Bonding**: Physical meetings create strongest trust relationships
 
-#### 3. Economic Layer
-- Verified humans receive equal allocations of BUBI tokens
-- Distribution follows a predictable inflation schedule (3% APR)
-- Tokens accrue continuously and proportionally, entitling holders to distributions of Bitocin and other assets.
+#### 3. Social Recovery Layer
+- **Guardian Networks**: Threshold signature schemes enable collaborative key recovery
+- **Flexible Thresholds**: Security models adapt as social networks grow
+- **Key Rotation**: Seamless guardian addition without account recreation
+- **Emergency Recovery**: Rapid response to device loss or compromise
+
+#### 4. Economic Incentive Layer
+- **UBI Distribution**: Bitcoin-backed tokens reward network participation
+- **Anti-Sybil Economics**: Real economic value prevents fake account creation
+- **Progressive Activation**: Bitcoin deposits unlock full economic functionality
+- **Network Effects**: Growing participation increases individual and collective value
 
 ### Key Innovations
 
-**Anonymous Peer Verification**: Unlike traditional identity systems that rely on documents or biometrics tied to real identities, BUBIWOT uses anonymous peer attestations where humans vouch for other humans without revealing personal information.
+**The Dual-Purpose Attestation**: Unlike any existing system, BUBIWOT attestations simultaneously serve proof-of-humanity AND threshold key recovery—maximizing the value of every real-world interaction.
 
-**Bitcoin Economic Security**: By backing UBI tokens with Bitcoin reserves, the protocol ensures that the distributed tokens have real economic value and are not subject to arbitrary inflation by central authorities.
+**Progressive Threshold Security**: Start with simple single-device security, then incrementally upgrade to sophisticated multi-party threshold schemes as your social network grows.
 
-**Progressive Decentralization**: The system starts with practical off-chain components and progressively moves toward full on-chain settlement as the technology and adoption mature.
+**Bitcoin-Native Social Recovery**: FROST threshold signatures work directly with Bitcoin and Lightning, eliminating the need for complex smart contract systems while maintaining full programmability.
+
+**IRL-First Trust Bonds**: Physical meetings create cryptographically verifiable trust relationships that are orders of magnitude stronger than online-only verification methods.
+
+### Applications Beyond UBI
+
+The trust-minimized web of trust primitive enables multiple applications:
+
+**🏛️ Decentralized Governance**
+- Sybil-resistant voting systems
+- Progressive delegation based on trust networks
+- Anonymous but verifiable participation
+
+**🔐 Social Recovery Wallets**
+- Threshold signature wallets for any cryptocurrency
+- Cross-chain social recovery systems
+- Enterprise multi-signature management
+
+**🌐 Web of Trust Authentication**
+- Password-less authentication systems  
+- Decentralized identity verification
+- Anonymous but trusted access control
+
+**🤝 Peer-to-Peer Networks**
+- Trust-scored marketplace systems
+- Decentralized lending/borrowing protocols
+- Anonymous reputation systems
 
 ### Problem Statement
 
-Current UBI proposals face several critical challenges:
+Current trust and identity systems face fundamental limitations:
 
-1. **Trust Requirements**: Existing systems require trusted central authorities to distribute funds and verify recipients
-2. **Sybil Attacks**: Difficult to prevent fake accounts without invasive identity verification
-3. **Censorship**: Central authorities can exclude individuals or groups from participation
-4. **Inflation Risk**: Fiat-backed UBI systems are subject to monetary policy and debasement
-5. **Privacy Violations**: Traditional identity verification exposes sensitive personal information
+1. **Centralized Trust**: Existing systems require trusted authorities for verification and recovery
+2. **Sybil Vulnerability**: Difficult to prevent fake accounts without invasive identity checks
+3. **Recovery Complexity**: Seed phrases and hardware tokens create poor user experience
+4. **Privacy Violations**: Traditional verification exposes sensitive personal information
+5. **Single-Purpose Systems**: Each application requires separate identity and trust infrastructure
+6. **Economic Misalignment**: No incentive mechanisms to encourage honest participation
 
-BUBIWOT addresses each of these challenges through cryptographic and economic design.
+BUBIWOT's trust-minimized web of trust addresses each challenge through cryptographic design and economic incentives.
 
-### Vision
+### Vision: Layer-Zero for Human Coordination
 
-The ultimate vision of BUBIWOT is to create a global, permissionless Universal Basic Income system that:
+The ultimate vision of BUBIWOT extends far beyond Universal Basic Income:
 
-- Provides economic security to all humans regardless of geography or political status
-- Operates without relying on any government, corporation, or centralized entity
-- Preserves privacy and human dignity in the verification process
-- Creates sustainable economic value through Bitcoin's proven monetary properties
-- Enables a new paradigm of human coordination and mutual aid
+**🌍 Global Infrastructure**
+- Foundational layer for any application requiring human verification
+- Interoperable across all blockchain networks and traditional systems
+- Censorship-resistant operation independent of any government or corporation
 
-### Getting Started
+**🔬 Cryptographic Innovation**
+- New primitive enabling previously impossible applications
+- Foundation for post-password authentication systems
+- Social cryptography as robust as individual cryptography
 
-The BUBIWOT protocol is currently in development, with an MVP focusing on:
+**🤝 Human-Centric Design**
+- Technology that enhances rather than replaces human relationships
+- Privacy-preserving systems that respect human dignity
+- Progressive decentralization matching natural social network growth
 
-- Client-side identity generation and management
-- Peer attestation mechanisms
-- UBI allocation tracking and visualization
-- Foundation for future on-chain settlement
+**💰 Economic Sustainability**
+- Self-reinforcing economic incentives prevent system degradation
+- Bitcoin-backed value ensures long-term sustainability
+- Network effects create positive feedback loops
 
-This introduction serves as the foundation for understanding how BUBIWOT reimagines Universal Basic Income for the digital age, combining the best of cryptographic security, economic sustainability, and human dignity.
+### Getting Started: UBI as the First Application
+
+While the trust-minimized web of trust enables countless applications, BUBIWOT begins with Universal Basic Income because:
+
+- **Clear Value Proposition**: Everyone understands the benefit of basic income
+- **Strong Anti-Sybil Incentives**: Real economic value prevents fake accounts
+- **Natural Network Growth**: People are motivated to onboard friends and family
+- **Global Relevance**: UBI appeals across all demographics and geographies
+
+The current MVP focuses on:
+
+- **Client-side identity generation and threshold key management**
+- **IRL attestation mechanisms with dual-purpose functionality**
+- **UBI allocation tracking with Bitcoin-backed value**
+- **Progressive social recovery system development**
+- **Foundation for the broader trust-minimized web of trust ecosystem**
+
+### Conclusion: A New Primitive for Human Coordination
+
+BUBIWOT represents more than a UBI system—it's the **layer-zero infrastructure** for a new era of human coordination technology. By solving the fundamental challenge of trust-minimized proof-of-personhood while simultaneously enabling robust social recovery systems, BUBIWOT creates the foundation for countless applications we haven't yet imagined.
+
+The trust-minimized web of trust primitive promises to be as foundational to human coordination as public-key cryptography was to digital security—enabling new forms of cooperation, governance, and economic activity that respect both individual sovereignty and collective flourishing.
+
+**The future of human coordination is cryptographic, social, and trust-minimized. BUBIWOT makes it possible.**
 `;
 
 export default function BubiwotIntro() {

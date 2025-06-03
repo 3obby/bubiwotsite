@@ -6,129 +6,256 @@ import MarkdownContent from '../../../components/MarkdownContent';
 
 // Content for this document
 const documentContent = `
-# Bitcoin UBI Client MVP
+# Bitcoin UBI Client MVP with Threshold Social Recovery
 
 ### 1. Summary
 
-BUBIWOT is a trust-minimized protocol that begins distributing a Bitcoin-backed UBI token (BUBI) to real humans via anonymous peer attestations. In this MVP you'll be able to:
+BUBIWOT is a trust-minimized protocol that distributes Bitcoin-backed UBI tokens (BUBI) to real humans via **IRL peer attestations** that simultaneously enable **threshold social recovery**. In this MVP you'll be able to:
 
 - Create a pseudonymous account (keypair generated client-side, stored via WebAuthn/biometrics)
-- Attest other users' accounts (n-of-m social graph)
-- See your cumulative BUBI allocation, accruing at a fixed rate (e.g. 3% annual inflation), even before spendability
+- **IRL Attest** other users' accounts via QR/NFC pairing (dual-purpose: UBI verification + key fragment exchange)
+- See your cumulative BUBI allocation, accruing at a fixed rate (e.g. 3% annual inflation)
+- **Incrementally decentralize** your account security through threshold cryptography
+- **Socially recover** lost accounts via trusted peer collaboration
 
-This MVP lays the groundwork for a censorship-resistant identity layer and on-chain Bitcoin-backed UBI economy.
+This MVP proves the core primitives for a censorship-resistant identity layer, social recovery system, and Bitcoin-backed UBI economy.
 
 ### 2. MVP Objectives
 
 - **Proof-of-Human Onboarding**
   - Client-side keypair generation
   - Biometric-gated private key via WebAuthn/passkeys
+  - **Progressive decentralization**: start with single device, upgrade to threshold security
 
-- **Anonymous Peer Attestations**
-  - Users sign attestations for others' public keys
-  - Store attestations in a shared off-chain database (e.g. PostgreSQL or IPFS)
+- **IRL Peer Attestations (Dual Purpose)**
+  - **UBI Verification**: Sign attestations for others' humanity/uniqueness
+  - **Key Fragment Exchange**: Generate and exchange threshold signature shares (FROST/Shamir)
+  - Store attestations in shared off-chain database (PostgreSQL/IPFS)
 
 - **UBI Allocation Engine**
-  - Daily allocation of "virtual" BUBI tokens per verified account
+  - Daily allocation of BUBI tokens per verified account
   - Inflation schedule: 3% APR, prorated per second
+  - **Account Activation**: deposit Bitcoin to unlock spendable BUBI
+
+- **Threshold Social Recovery**
+  - **Incremental Guardian Addition**: add trusted peers over time
+  - **Flexible Thresholds**: 2-of-3 initially, expand to 3-of-5, etc.
+  - **Key Rotation**: seamlessly integrate new guardians without account recreation
 
 - **Dashboard & API**
-  - Next.js front-end to view attestations and BUBI balance
-  - REST API for fetching attestations & allocations
+  - Next.js front-end showing BUBI balance, guardian status, recovery options
+  - REST API for attestations, allocations, and threshold operations
 
 ### 3. System Architecture
 
 \`\`\`
 flowchart LR
   subgraph Client
-    A[Next.js SPA] --> B[WebAuthn Keypair]
+    A[Next.js PWA] --> B[WebAuthn Keypair]
     B --> C[LocalStorage.Encrypted]
     A --> D[Dashboard UI]
+    A --> E[QR/NFC Pairing]
+    A --> F[Threshold Key Manager]
+    F --> G[FROST Signatures]
   end
   subgraph Backend
-    E[API Server(Node.js + Express)]
-    F[(Attestation DBPostgres/IPFS)]
-    G[(Allocation Engine)]
-    E --> F
-    E --> G
-    G --> H[(UBI Ledger DB)]
+    H[API Server Node.js]
+    I[(Attestation DB)]
+    J[(UBI Allocation Engine)]
+    K[(Guardian Registry)]
+    L[(Threshold Coordinator)]
+    H --> I
+    H --> J
+    H --> K
+    H --> L
+    J --> M[(BUBI Ledger)]
   end
-  Client -->|1. Register/Attest| E
-  Client -->|2. Fetch Balance| E
+  subgraph Bitcoin Layer
+    N[Lightning Network]
+    O[Babylon Sidechain]
+    P[Bitcoin Mainchain]
+  end
+  Client -->|1. Register/Attest/Fragment| H
+  Client -->|2. Fetch Balance/Status| H
+  Client -->|3. Activate Account| N
+  H -->|4. Anchor Attestations| P
 \`\`\`
 
-- **Client (Next.js)**
-  - Onboarding: prompt biometric via WebAuthn → generate/sign keypair
-  - Attest: sign another user's pubkey + timestamp → POST /attest
+### 4. IRL Attestation Flow (Dual Purpose)
 
-- **API Server**
-  - /register: stores pubkey + minimal profile metadata
-  - /attest: validates signature + writes to attestations table or IPFS
-  - /balance: computes accrued BUBI from UBI Ledger DB
+**Step 1: Initial Setup**
+- Generate Ed25519 keypair client-side
+- Store private key encrypted with WebAuthn
+- Register public key with backend
 
-- **Allocation Engine**
-  - (client/user pulls credited funds to personal account):
-    - Count verified accounts
-    - Mint new BUBI into BUBI treasury
-    - Credit portion of withdraw to puller's account pro rata into UBI Ledger DB
+**Step 2: First IRL Attestation (with Peer A)**
+- Open app, tap "New Attestation"
+- Generate ephemeral pairing key → QR code
+- Peer scans QR, establishes secure local connection
+- **Dual Exchange**:
+  - **UBI Attestation**: Sign each other's pubkeys for humanity verification
+  - **Key Fragment**: Generate 2-of-2 threshold shares using FROST
+- Store attestation in backend, key fragments locally (encrypted)
 
-### 4. Identity & Attestations
+**Step 3: Second IRL Attestation (with Peer B)**
+- Repeat pairing process with second peer
+- **Threshold Upgrade**: Rotate to 2-of-3 scheme
+- Now have: 2 guardians + original device key
+- **Account Verification**: ≥2 attestations = verified for UBI
 
-- **Keypair**: Ed25519 generated client-side
-- **Storage**: private key encrypted with WebAuthn credential
-- **Attestation Record**:
+**Step 4: Account Activation**
+- Deposit Bitcoin into Lightning channel or Babylon sidechain
+- Trigger threshold key migration (funds move to socially-recoverable address)
+- Original single-device key archived/deleted
+- **BUBI Unlocked**: virtual balance becomes spendable
 
+**Step 5: Incremental Decentralization**
+- Add Peer C, D, etc. over time
+- Each addition rotates threshold (2-of-3 → 3-of-5 → etc.)
+- Flexible guardian management without account recreation
+
+### 5. Identity & Attestation Records
+
+**Attestation Record (UBI Verification)**:
 \`\`\`json
 {
-  "issuer":   "pubkey_A",
-  "subject":  "pubkey_B",
-  "sig":      "sign_A(subject||timestamp)",
-  "ts":       "ISO8601 timestamp"
+  "issuer": "pubkey_A",
+  "subject": "pubkey_B", 
+  "sig": "sign_A(subject||timestamp||nonce)",
+  "ts": "ISO8601 timestamp",
+  "attestation_type": "humanity_verification"
 }
 \`\`\`
 
-- **Sybil Resistance**: require each new account to collect ≥ k attestations from unique issuers before "verified"
+**Guardian Record (Threshold Recovery)**:
+\`\`\`json
+{
+  "account": "pubkey_primary",
+  "guardian": "pubkey_guardian",
+  "threshold_share": "encrypted_key_fragment",
+  "threshold_config": "2-of-3",
+  "sig": "sign_both(guardian_agreement)",
+  "ts": "ISO8601 timestamp"
+}
+\`\`\`
 
-### 5. UBI Token Allocation
+### 6. UBI Token Allocation
 
-- **Virtual Balance**: not spendable in MVP, visible only
-- **Inflation**: 3% APR, continuous, minted regularly
-- **Distribution**: equal per verified account
-- **Ledger**: simple time-series table of allocations
+- **Virtual Phase**: BUBI balance visible but not spendable
+- **Activation Threshold**: ≥2 attestations + Bitcoin deposit
+- **Inflation**: 3% APR, continuous minting
+- **Distribution**: equal allocation per verified account
+- **Spendability**: Lightning/Babylon integration for real transactions
 
-### 6. Data Privacy & Storage
+### 7. Threshold Social Recovery
 
-- **Off-chain attestation store**: Postgres for MVP (move to IPFS/Filecoin later)
-- **Public audit**: read-only API endpoints for verifiers
-- **No personal data**: only pubkeys & attestations
+**Recovery Scenarios**:
+- **Device Loss**: Guardians collaborate to sign recovery transaction
+- **Guardian Loss**: Remaining guardians help rotate threshold
+- **Compromise**: Emergency key rotation with guardian consensus
 
-### 7. Security & UX
+**Recovery Process**:
+1. User initiates recovery from new device
+2. Proves identity to threshold of guardians (IRL/video/etc.)
+3. Guardians collaboratively sign recovery transaction using FROST
+4. New device key replaces compromised key
+5. Threshold rotated to include new key
 
-- **Biometric gating** via WebAuthn/passkeys ensures private keys never leave device
-- **"One-click" attest**: tap user's profile → confirm biometric → attest
-- **Simple dashboard**: show your BUBI balance, pending attestations, total network supply
+### 8. Security & UX Innovations
 
-### 8. User Flow
+- **Progressive Security**: Start simple (single device) → upgrade to threshold
+- **IRL-First**: Physical meetings create strongest attestation bonds
+- **Dual-Purpose Meetings**: One IRL interaction serves both UBI + recovery
+- **Flexible Thresholds**: Adapt security model as social graph grows
+- **Bitcoin-Native**: FROST signatures work directly with Bitcoin/Lightning
 
-- **Register**
-  - Visit /register → prompt biometric → generate pubkey → POST to backend
+### 9. User Journey
 
-- **Verify Peers**
-  - Scan QR or share profile link → click "Attest" → biometric → send attestation
+**Phase 1: Solo Start**
+- Install PWA → generate keys → basic UBI accrual (virtual only)
 
-- **View Balance**
-  - Dashboard polls /balance → displays accrued BUBI, network stats
+**Phase 2: First Guardian** 
+- Meet friend IRL → mutual attestation + key fragment exchange
+- Still single-device control, but recovery option exists
 
-### 9. Roadmap (Post-MVP)
+**Phase 3: Account Activation**
+- Second IRL attestation → verified status
+- Deposit Bitcoin → unlock spendable BUBI
+- Threshold security activated (2-of-3)
 
-- **On-chain anchoring**: commit attestation roots via Bitcoin OP_RETURN
-- **Spendability**: mint real BUBI on a sidechain or LN token layer
-- **Reputation scoring**: weight attestations by issuer reputation
-- **Social recovery**: n-of-m attestations to recover lost keys
+**Phase 4: Network Growth**
+- Additional IRL meetings → more guardians
+- Stronger threshold security (3-of-5, 4-of-7, etc.)
+- Richer social attestation graph
 
-### 10. Conclusion
+### 10. Technical Stack
 
-This MVP proves out the core primitives—anonymous peer attestations and Bitcoin-backed UBI accrual—laying the foundation for a forkless, censorship-resistant identity and basic-income protocol. Once adoption and security are validated, we'll bridge into on-chain settlement and full token utility.
+**Cryptography**:
+- **FROST** (threshold Schnorr signatures) for Bitcoin-native recovery
+- **Shamir's Secret Sharing** for flexible key fragmentation
+- **Ed25519** for attestation signatures
+- **WebAuthn** for biometric key protection
+
+**Infrastructure**:
+- **Next.js PWA** with offline capability
+- **QR/NFC** for secure local pairing
+- **Lightning Network** for micropayments
+- **Babylon** for programmable Bitcoin contracts
+- **IPFS** for decentralized attestation storage
+
+### 11. Roadmap Integration
+
+**MVP (Current)**:
+- IRL attestations (dual-purpose)
+- Virtual BUBI accrual
+- Basic threshold recovery (2-of-3)
+
+**Phase 2**:
+- Lightning integration
+- Spendable BUBI tokens
+- Advanced threshold management
+
+**Phase 3**:
+- Babylon smart contracts
+- On-chain attestation anchoring
+- Cross-chain UBI distribution
+
+**Phase 4**:
+- Reputation-weighted attestations
+- Automated threshold adjustments
+- Global UBI network effects
+
+### 12. Unique Value Proposition
+
+This merged approach is genuinely novel:
+
+**vs. Existing Social Recovery** (Argent, Casa, etc.):
+- **IRL-First**: Physical attestations create stronger trust bonds
+- **Dual Purpose**: One meeting serves both UBI verification + key recovery
+- **Bitcoin-Native**: FROST signatures work directly with Bitcoin/Lightning
+- **Incremental**: Add guardians over time without account recreation
+
+**vs. Existing UBI Systems**:
+- **Cryptographic Sybil Resistance**: Threshold attestations prevent fake accounts
+- **Self-Sovereign**: No central authority controls distribution
+- **Bitcoin-Backed**: Real economic value, not just social tokens
+
+**vs. Traditional Wallets**:
+- **Progressive Decentralization**: Start simple, upgrade security incrementally
+- **Social-First**: Recovery through trusted relationships, not seed phrases
+- **UBI Integration**: Account security directly tied to economic participation
+
+### 13. Conclusion
+
+By merging UBI attestations with threshold social recovery, BUBIWOT creates a unique system where **every IRL interaction serves dual purposes**: proving humanity for economic participation AND building cryptographic social safety nets.
+
+This approach solves multiple problems simultaneously:
+- **Sybil-resistant UBI** through physical attestations
+- **User-friendly recovery** through trusted social relationships  
+- **Progressive security** that grows with your social network
+- **Bitcoin-native implementation** using FROST threshold signatures
+
+The result is a trust-minimized protocol that makes Bitcoin-backed UBI both economically sound and socially recoverable—laying the foundation for a truly decentralized basic income system.
 `;
 
 export default function BitcoinUbiClientMvp() {
