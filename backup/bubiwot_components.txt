@@ -1,0 +1,103 @@
+# BUBIWOT System Architecture & Components
+
+This document details the concrete components required to build the BUBIWOT system, how they relate to each other, and recommended starting points. The system is best understood as a three-layer stack: the **BUBIWOT Appchain** (the sovereign chain), the **Babylon Control Plane** (the security source), and the **Bitcoin Base Layer** (the ultimate asset).
+
+---
+
+### Component 1: The Core Blockchain (the BUBIWOT "Appchain")
+
+This is the sovereign, application-specific blockchain. Its purpose is to run the core logic and execution environment for the BUBIWOT protocol.
+
+*   **Technology**: Cosmos SDK, CometBFT, Ignite CLI. Following Babylon's model, the appchain will be a custom Proof-of-Stake blockchain built with the Cosmos SDK.
+*   **Language**: Go.
+*   **Core Modules (Integrated from Cosmos/Babylon):**
+    *   **Standard Modules**: `x/auth`, `x/bank`, `x/gov` for basic account, governance, and chain management.
+    *   **`x/wasm`**: The CosmWasm module, which enables the chain to run and manage WebAssembly smart contracts. This is where the application logic will live.
+    -   **`x/ibc-go`**: The Inter-Blockchain Communication protocol module, essential for connecting to the Babylon chain.
+    -   **Babylon Consumer Module**: You will integrate Babylon's official consumer module. This module receives security checkpoints from the Babylon control plane, effectively anchoring the appchain's security to Bitcoin.
+*   **Purpose & Responsibilities**:
+    *   To provide a secure, decentralized, and reliable execution environment for the BUBIWOT protocol.
+    *   To validate transactions and maintain the integrity of the BUBIWOT ledger, which includes user accounts, BUBI token balances, and reputation scores.
+    *   To serve as the settlement layer for operations executed in the smart contracts, including on-chain Sybil penalties.
+    *   To communicate with the Babylon chain via IBC to inherit Bitcoin-grade security.
+    *   To expose RPC, gRPC, and LCD endpoints for user clients to interact with the chain.
+    *   **The chain's validators are responsible for running the off-chain TSS service (see Component 4) to manage the protocol's Bitcoin treasury for rewards and fee distribution.**
+*   **Boilerplate/Starting Point**:
+    *   **Ignite CLI**: The primary tool for scaffolding a new Cosmos SDK blockchain. Use `ignite chain [the-chain-name]` to generate a working boilerplate. You will then add the `x/wasm` and Babylon modules.
+
+---
+
+### Component 2: The Smart Contract Layer
+
+This layer runs on top of the BUBIWOT appchain via the `x/wasm` module. It contains the flexible business logic of the protocol, which can be upgraded via governance without requiring a coordinated chain halt.
+
+*   **Technology**: CosmWasm.
+*   **Language**: Rust.
+*   **Key Contracts**:
+    *   **Account Hub (`bubi-hub`)**: The central contract managing user accounts, guardian relationships (including time-locked replacements), public recovery data, reputation scores, and BTC payout addresses. It handles on-chain Sybil penalties, UBI claims, and emits events for BTC reward/fee distributions.
+    *   **BUBI Token (`cw20-bubi`)**: An instance of a standard `cw20` (fungible token) contract. The `bubi-hub` contract will be its administrator, with the authority to mint new tokens for UBI distribution and to confiscate tokens from accounts proven to be Sybils.
+    *   **Content Platform (`content-hub`)**: A contract for managing the on-chain pointers to off-chain content. It stores content hashes, topics, and parent-child relationships for threading. It may also contain the logic for value-ranking posts based on attached BUBI incentives.
+*   **Purpose & Responsibilities**:
+    *   To execute the core application logic: account creation, guardian attestation, public data storage, etc.
+    *   To manage the BUBI token lifecycle (minting, transfers, confiscation).
+    *   To manage reputation scores and execute on-chain punishments for Sybil-related offenses.
+    *   To manage the time-locked guardian replacement process.
+    *   To emit events for all critical on-chain actions (`AttestationSubmitted`, `SybilReported`, `BtcPayoutRequest`).
+    *   **To emit events (`BtcPayoutRequest`) to instruct the off-chain TSS service to distribute Bitcoin rewards and fee dividends from the protocol treasury.**
+*   **Boilerplate/Starting Point**:
+    *   **CosmWasm Template**: Use `cargo generate --git https://github.com/CosmWasm/cw-template.git --name my-contract` to scaffold a new contract.
+    *   **`cw-plus`**: A library of production-ready contracts. You will use `cw-plus/contracts/cw20-base` as the foundation for the BUBI token.
+
+---
+
+### Component 3: The In-Browser P2P Client
+
+This is the user-facing application. It functions as a powerful light client, allowing users to interact with the BUBIWOT network directly from their browser, contributing to the P2P network's resilience.
+
+*   **Technology**: TypeScript, Next.js, CosmJS, js-libp2p, nostr-tools.
+*   **Language**: TypeScript / JavaScript.
+*   **Client-side Architecture**:
+    *   **Service Layer (`@bubi/client-core`)**: A dedicated library to handle all external communications.
+        *   `CosmJS Service`: Wraps CosmJS to manage wallet connections (e.g., Keplr), query smart contracts, and construct/broadcast transactions to the BUBIWOT Appchain.
+        *   `P2P Service Layer`: Manages peer-to-peer interactions.
+            *   **`Nostr Service`**: Manages connections to Nostr relays. Its roles include: 1) Publishing and subscribing to content (posts, replies). 2) Broadcasting and monitoring guardian "liveness heartbeats" via signed Nostr events. 3) A discovery layer for finding and signaling other peers.
+            *   **`LibP2P Service`**: Manages direct, secure browser-to-browser communication channels, used for sensitive operations like exchanging recovery shares once peers have been discovered.
+    *   **State Management**: A modern state management library (e.g., Zustand, Redux Toolkit) to handle global state like wallet connection, account details, balances, and messages.
+    *   **UI Layer**: Built with Next.js/React components to create the user dashboard and workflows for all protocol interactions.
+*   **Purpose & Responsibilities**:
+    *   To provide a secure and intuitive user interface.
+    *   To manage user keys securely, likely via integration with browser wallet extensions like Keplr. **The client must manage both the user's primary account key and a separate, dedicated "guardian key" used for generating recovery shares for others.** This separation is critical to prevent the "domino effect" and enhance security.
+    *   To use `nostr-tools` to interact with the decentralized social graph and to monitor peer liveness.
+    *   To use `js-libp2p` for secure, direct communication channels when required.
+    *   To use `CosmJS` to submit finalized transactions to the BUBIWOT Appchain and query its state.
+*   **Boilerplate/Starting Point**:
+    *   **`create-next-app`**: The standard Next.js boilerplate.
+    *   **`js-libp2p` and `nostr-tools` examples**: The official GitHub repositories for these libraries provide excellent starting points for browser integration.
+    *   **`CosmJS`**: The primary library for client-side interaction with any Cosmos-based chain.
+
+---
+
+### Component 4: Off-Chain Services (Validator-Operated)
+
+While most logic is on-chain, some critical functions require off-chain software run by the BUBIWOT appchain's validators. This component is essential for interacting with the Bitcoin network.
+
+*   **Technology**: Go or Rust, running as a service alongside the validator node.
+*   **Key Services**:
+    *   **Threshold Signature Scheme (TSS) Service**: This is the most critical off-chain component. It enables validators to collectively control a Bitcoin wallet without any single validator holding the full private key.
+        *   **Event Listener**: The service constantly watches the BUBIWOT appchain for `BtcPayoutRequest` events, which are emitted for both attestation rewards and for BUBI holders claiming their share of network fees.
+        *   **TSS Signing Ceremony**: When a valid event is detected, the service initiates a multi-round communication protocol with other validators' TSS services to collectively generate a Bitcoin signature.
+        *   **Transaction Broadcaster**: Once a signature is created, one of the validators broadcasts the transaction to the Bitcoin network.
+*   **Purpose & Responsibilities**:
+    *   To act as a trust-minimized bridge, translating instructions from the BUBIWOT smart contract layer into actions on the Bitcoin blockchain.
+    *   To secure the protocol's main Bitcoin treasury, from which both rewards and network fee dividends are paid.
+    *   To ensure that Bitcoin payouts only happen when authorized by the on-chain logic.
+*   **Boilerplate/Starting Point**:
+    *   This is a more advanced component. Implementations can be complex. Existing open-source solutions for TSS in the Cosmos ecosystem (e.g., from Nomic, Axelar, or Thorchain) can serve as architectural references.
+
+---
+
+### How The Components Relate: A Practical Workflow
+
+This diagram and workflow illustrate how all the pieces fit together.
+
+**BUBIWOT Architecture Overview**

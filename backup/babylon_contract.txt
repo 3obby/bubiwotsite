@@ -1,0 +1,628 @@
+// BUBIWOT Protocol Smart Contract Pseudocode
+// Deployed on: The BUBIWOT Appchain (a Cosmos-SDK chain secured by Babylon)
+// Dependencies: CosmWasm Module, Babylon Consumer Module
+
+// =================================================================
+// Contract State
+// =================================================================
+
+// Configuration parameters for the contract, set at instantiation.
+STATE.config: {
+  bubi_total_supply: Uint,
+  bubi_emitted: Uint,
+  emission_schedule: { // Rules for UBI emission
+    rate_per_block: Uint,
+    last_emission_block: Uint,
+  },
+  slashing_penalty_fraction: Decimal, // e.g., 0.33 for 33%
+  attestation_reward_bubi: Uint,
+  attestation_reward_btc: Uint, // Add BTC reward amount
+  min_attestations_for_verification: Uint, // Add threshold for becoming verified
+  min_bubi_stake_for_attestation: Uint, //  Min BUBI stake to be a guardian
+  unstaking_period_in_blocks: Uint, //  Time-lock for unstaking BUBI
+  // Other config...
+}
+
+// Stores BTC fees to be distributed to BUBI holders.
+STATE.btc_reward_pool: {
+  total_rewards: Uint,
+}
+
+// Stores pending requests to replace an unresponsive guardian.
+// Maps owner -> old_guardian -> { new_guardian, request_block }
+STATE.pending_guardian_replacements: Map<PublicKey, Map<PublicKey, GuardianReplacementRequest>>
+
+//  Stores pending requests to unstake BUBI.
+// Maps owner -> { amount, request_block }
+STATE.pending_bubi_unstakes: Map<PublicKey, UnstakeRequest>
+
+//  User-configurable policy for an account.
+AccountPolicy: {
+  // Policy for who can attest for this account.
+  require_attestor_is_verified: Bool,
+  min_attestor_reputation: Uint,
+  min_attestor_bubi_staked: Uint,
+}
+
+GuardianReplacementRequest: {
+  new_guardian: PublicKey,
+  request_block: Uint,
+}
+
+UnstakeRequest: {
+  amount: Uint,
+  request_block: Uint,
+}
+
+// Mapping from an owner's public key to their account data.
+// A public key is a unique identifier for a user.
+STATE.accounts: Map<PublicKey, Account>
+
+// Account structure for each user.
+Account: {
+  owner_pubkey: PublicKey,
+  guardians: Set<PublicKey>, // Set of guardian public keys
+  recovery_threshold: Uint,
+  staked_btc_info: BtcStakeInfo, // Info from Babylon Staking Module
+  bubi_balance: Uint,
+  bubi_staked: Uint, //  BUBI staked to enable attestation rights.
+  reputation_score: Uint,
+  is_human_verified: Bool, // Set to true after initial attestations
+  attested_by: Set<PublicKey>, // Track which guardians verified this account
+  public_recovery_data: Option<Bytes>, // Stores the public points from the BUSS scheme
+  last_claim_block: Uint, // Block height of the user's last UBI claim
+  policy: AccountPolicy, //  User-configurable security and trust policy.
+  // The public key this account uses when acting as a guardian for others.
+  // This separation prevents the "domino effect" on key compromise.
+  // NOTE: This is set by the user when they choose to act as a guardian. A user
+  // is responsible for backing up this key separately (e.g., via mnemonic).
+  guardian_pubkey_for_others: Option<PublicKey>,
+  // BTC address for receiving network fee distributions and other rewards.
+  btc_payout_address: Option<String>,
+  // Tracks claimed BTC rewards to prevent double-claiming.
+  last_btc_reward_claim_block: Uint,
+}
+
+// Represents a pointer to content stored off-chain (e.g., on IPFS or Nostr relays).
+ContentPointer: {
+  author_pubkey: PublicKey,
+  // The hash of the content itself.
+  content_hash: Bytes,
+  // Optional topic for categorization (e.g., a subreddit).
+  topic: Option<String>,
+  // Optional hash of a parent post, for threaded replies.
+  parent_hash: Option<Bytes>,
+  timestamp: Timestamp,
+}
+
+// Mapping for content pointers. A structure like this could power a social feed.
+// Maps a topic to a list of root content pointers. Replies are linked via parent_hash.
+STATE.content_platform: Map<String, List<ContentPointer>>
+
+// Mapping for durable, on-chain messages.
+STATE.durable_messages: Map<PublicKey, List<Message>>
+
+// Mapping for generic, incentivized attestation requests.
+// Maps a unique request ID to the request details.
+STATE.attestation_requests: Map<String, AttestationRequest>
+
+Message: {
+  sender_pubkey: PublicKey,
+  recipient_pubkey: PublicKey,
+  content: String, // or Bytes
+  timestamp: Timestamp,
+}
+
+// Represents an on-chain request for a signature.
+AttestationRequest: {
+  request_id: String,
+  requester_pubkey: PublicKey, // The BUBIWOT account of the service making the request.
+  challenge: Bytes, // A nonce or message for the user to sign.
+  incentive_amount: Uint, // BUBI held in escrow.
+  status: Enum("OPEN", "FULFILLED", "CANCELLED"),
+  fulfiller_pubkey: Option<PublicKey>, // Who fulfilled it.
+  fulfillment_signature: Option<Bytes>, // The signature provided.
+  expiry_block: Uint, // Block height after which the request can be cancelled.
+}
+
+
+// =================================================================
+// Core Functions (Execute Entry Points)
+// =================================================================
+
+// -- Account Management --
+
+// Creates a new BUBIWOT account. Requires the user to have already staked Bitcoin
+// via the Babylon protocol. Guardians and recovery data are set in a separate step.
+FUNCTION register_account(owner_pubkey, btc_payout_address: Option<String>, btc_staking_tx_proof):
+  // Pre-conditions
+  ASSERT sender is owner_pubkey
+  ASSERT account for owner_pubkey does not exist
+  
+  // Interact with Babylon Staking Module to verify the stake
+  staked_info = BabylonStakingModule.verify_and_register_stake(btc_staking_tx_proof)
+  ASSERT staked_info is valid
+
+  // Create and save the new account
+  new_account = Account {
+    owner_pubkey: owner_pubkey,
+    guardians: Set(), // Initialized as empty
+    recovery_threshold: 0, // Initialized as 0
+    staked_btc_info: staked_info,
+    bubi_balance: 0,
+    bubi_staked: 0,
+    reputation_score: 100, // Initial score
+    is_human_verified: false, // Requires recovery setup and/or attestations
+    attested_by: Set(),
+    public_recovery_data: None, // Set via set_recovery_info
+    last_claim_block: current_block, // Set initial claim block to now
+    policy: { //  Set a default, permissive policy to encourage bootstrapping
+      require_attestor_is_verified: false,
+      min_attestor_reputation: 0,
+      min_attestor_bubi_staked: 0,
+    },
+    guardian_pubkey_for_others: None,
+    btc_payout_address: btc_payout_address,
+    last_btc_reward_claim_block: current_block,
+  }
+  STATE.accounts.set(owner_pubkey, new_account)
+
+  // This is where on-chain attestations from guardians would be processed
+  // to set is_human_verified = true and populate the `attested_by` field.
+  EMIT Event("AccountRegistered", { owner: owner_pubkey })
+
+
+//  Allows a user to set their guardian key to begin acting as a guardian for others.
+FUNCTION set_guardian_key(guardian_pubkey: PublicKey):
+  // Pre-conditions
+  sender_pubkey = sender
+  account = STATE.accounts.get(sender_pubkey)
+  ASSERT account exists
+
+  account.guardian_pubkey_for_others = Some(guardian_pubkey)
+  STATE.accounts.set(sender_pubkey, account)
+  EMIT Event("GuardianKeySet", { owner: sender_pubkey, guardian_key: guardian_pubkey })
+
+
+//  Allows a user to update their own on-chain trust policy.
+FUNCTION set_account_policy(new_policy: AccountPolicy):
+  // Pre-conditions
+  sender_pubkey = sender
+  account = STATE.accounts.get(sender_pubkey)
+  ASSERT account exists
+
+  // Update policy
+  account.policy = new_policy
+  STATE.accounts.set(sender_pubkey, account)
+  EMIT Event("AccountPolicyUpdated", { owner: sender_pubkey, policy: new_policy })
+
+
+// -- New Function for Human Attestation --
+// Called by a user to attest for another account's humanity.
+FUNCTION attest_for_account(target_pubkey):
+  // Pre-conditions
+  attestor_pubkey = sender
+  attestor_account = STATE.accounts.get(attestor_pubkey)
+  target_account = STATE.accounts.get(target_pubkey)
+  ASSERT attestor_account exists
+  ASSERT target_account exists
+  ASSERT attestor_pubkey is not in target_account.attested_by, "Already attested for this account."
+
+  //  Check if attestor meets the target's configured policy.
+  target_policy = target_account.policy
+  if target_policy.require_attestor_is_verified:
+    ASSERT attestor_account.is_human_verified, "Target's policy requires attestor to be human-verified."
+  ASSERT attestor_account.reputation_score >= target_policy.min_attestor_reputation, "Attestor reputation too low for target's policy."
+  ASSERT attestor_account.bubi_staked >= target_policy.min_attestor_bubi_staked, "Attestor BUBI stake too low for target's policy."
+
+  // Update target account's attestations
+  target_account.attested_by.add(attestor_pubkey)
+
+  // Check if the target is now fully verified
+  if !target_account.is_human_verified and target_account.attested_by.length >= STATE.config.min_attestations_for_verification:
+    target_account.is_human_verified = true
+    EMIT Event("HumanVerified", { owner: target_pubkey })
+
+  // --- Grant Rewards to the Attestor ---
+  // 1. BUBI reward (on-chain)
+  attestor_account.bubi_balance += STATE.config.attestation_reward_bubi
+  EMIT Event("AttestationRewardPaid", { attestor: attestor_pubkey, target: target_pubkey, amount: STATE.config.attestation_reward_bubi, currency: "BUBI" })
+
+  // 2. BTC reward (via event for off-chain TSS service)
+  // This event signals to the validator-run TSS service that a BTC payout is authorized.
+  EMIT Event("BtcPayoutRequest", { recipient_address: attestor_account.btc_payout_address, amount: STATE.config.attestation_reward_btc, reason: "attestation_reward" })
+
+  // Save state
+  STATE.accounts.set(attestor_pubkey, attestor_account)
+  STATE.accounts.set(target_pubkey, target_account)
+
+
+// Atomically sets or updates an account's guardians, threshold, and public recovery data.
+// This is used for both initial setup of recovery and for subsequent changes.
+FUNCTION set_recovery_info(new_guardians, new_threshold, new_recovery_data: Bytes):
+  // Pre-conditions
+  ASSERT sender is a registered account owner
+  account = STATE.accounts.get(sender)
+  ASSERT new_guardians.length >= new_threshold
+  FOR each guardian_pubkey in new_guardians:
+    ASSERT account for guardian_pubkey exists and is_staked
+    guardian_account = STATE.accounts.get(guardian_pubkey)
+    ASSERT guardian_account.guardian_pubkey_for_others is not None, "A selected guardian has not configured their own guardian key."
+
+  // Atomically update account state
+  account.guardians = Set(new_guardians)
+  account.recovery_threshold = new_threshold
+  account.public_recovery_data = Some(new_recovery_data)
+  STATE.accounts.set(sender, account)
+
+  EMIT Event("RecoveryInfoUpdated", { owner: sender })
+
+
+// -- New Function for Reporting Sybils --
+FUNCTION report_sybil(sybil_pubkey, proof):
+  // Pre-conditions
+  ASSERT sender is a registered account owner with good reputation
+  sybil_account = STATE.accounts.get(sybil_pubkey)
+  ASSERT sybil_account exists and is_human_verified
+  ASSERT proof is valid // (e.g., evidence of key sharing, etc.)
+
+  // --- On-Chain Penalties ---
+  // Penalties are handled directly on the BUBIWOT appchain. The integrity of
+  // these state transitions is secured by Bitcoin via the Babylon protocol.
+  // If an attacker tries to revert these penalties by attacking the BUBIWOT
+  // chain's consensus, they risk having their staked BTC slashed by Babylon.
+
+  // Confiscate the Sybil's BUBI balance.
+  confiscated_amount = sybil_account.bubi_balance
+  sybil_account.bubi_balance = 0
+  
+  // Mark the account as a Sybil to freeze its activity.
+  sybil_account.is_human_verified = false
+  sybil_account.reputation_score = 0
+
+  // Penalize the guardians who attested for the sybil. This creates a strong
+  // economic disincentive against attesting for non-human accounts.
+  FOR each guardian_pubkey in sybil_account.attested_by:
+    guardian_account = STATE.accounts.get(guardian_pubkey)
+    guardian_account.reputation_score -= 50 // Example penalty
+    
+    //  Slash a portion of the guardian's staked BUBI.
+    slash_amount = guardian_account.bubi_staked * STATE.config.slashing_penalty_fraction
+    guardian_account.bubi_staked -= slash_amount
+    
+    STATE.accounts.set(guardian_pubkey, guardian_account)
+    EMIT Event("GuardianSlashed", { guardian: guardian_pubkey, amount: slash_amount, currency: "BUBI" })
+
+  // Reward the reporter with the confiscated funds and a reputation boost.
+  reporter_account = STATE.accounts.get(sender)
+  reporter_account.bubi_balance += confiscated_amount
+  reporter_account.reputation_score += 25
+
+  // Update Sybil and reporter accounts
+  STATE.accounts.set(sybil_pubkey, sybil_account)
+  STATE.accounts.set(sender, reporter_account)
+
+  // Emit an event that is recorded on the BUBIWOT chain. The finality of this
+  // event is secured by Babylon.
+  EMIT Event("SybilReported", { sybil: sybil_pubkey, reporter: sender, confiscated_bubi: confiscated_amount })
+
+
+// -- Account Recovery Workflow --
+
+// The account recovery itself is now a fully off-chain process.
+// 1. A user's client fetches their `public_recovery_data` from the contract (see QUERY below).
+// 2. The client contacts a threshold of guardians to get deterministically re-computed shares.
+// 3. The client combines the public data and shares to reconstruct the original key locally.
+// No on-chain recovery execution is needed.
+
+
+// -- Economic System (UBI & Staking) --
+
+//  Allows a user to stake BUBI to become eligible for attesting.
+FUNCTION stake_bubi(amount: Uint):
+  // Pre-conditions
+  sender_pubkey = sender
+  account = STATE.accounts.get(sender_pubkey)
+  ASSERT account exists
+  ASSERT account.bubi_balance >= amount, "Insufficient BUBI balance."
+
+  // Update balances
+  account.bubi_balance -= amount
+  account.bubi_staked += amount
+  STATE.accounts.set(sender_pubkey, account)
+  EMIT Event("BubiStaked", { owner: sender_pubkey, amount: amount })
+
+//  Allows a user to request to unstake their BUBI. This starts a time-lock.
+FUNCTION request_unstake_bubi(amount: Uint):
+  // Pre-conditions
+  sender_pubkey = sender
+  account = STATE.accounts.get(sender_pubkey)
+  ASSERT account exists
+  ASSERT account.bubi_staked >= amount, "Insufficient staked BUBI."
+  
+  // Create a pending unstake request.
+  // Note: this simple model only allows one pending unstake at a time.
+  ASSERT STATE.pending_bubi_unstakes.get(sender_pubkey) is None, "Unstake already pending."
+  request = UnstakeRequest {
+    amount: amount,
+    request_block: current_block,
+  }
+  STATE.pending_bubi_unstakes.set(sender_pubkey, request)
+  EMIT Event("BubiUnstakeRequested", { owner: sender_pubkey, amount: amount })
+
+//  After the unstaking period, anyone can finalize the unstake.
+FUNCTION finalize_unstake_bubi(owner_pubkey):
+  // Pre-conditions
+  request = STATE.pending_bubi_unstakes.get(owner_pubkey)
+  ASSERT request is not None, "No pending unstake request found."
+  
+  // Check time-lock
+  ASSERT current_block - request.request_block >= STATE.config.unstaking_period_in_blocks
+
+  // Perform unstake
+  account = STATE.accounts.get(owner_pubkey)
+  account.bubi_staked -= request.amount
+  account.bubi_balance += request.amount
+
+  // Clean up
+  STATE.pending_bubi_unstakes.delete(owner_pubkey)
+  STATE.accounts.set(owner_pubkey, account)
+  EMIT Event("BubiUnstaked", { owner: owner_pubkey, amount: request.amount })
+
+// A privileged function (e.g., governance-controlled) to add BTC fees to the reward pool.
+// This would be funded from protocol revenue streams.
+FUNCTION add_fees_to_btc_reward_pool(amount: Uint):
+  ASSERT sender is authorized // (e.g. governance or treasury contract)
+  // In a real implementation, this would update a global reward accumulator,
+  // e.g., reward_per_token_paid += amount / total_bubi_supply
+  STATE.btc_reward_pool.total_rewards += amount
+  EMIT Event("BtcRewardPoolFunded", { amount: amount })
+
+// Allows a user to claim their proportional share of the network's BTC fees for holding BUBI.
+FUNCTION claim_network_btc_rewards():
+  // Pre-conditions
+  sender_pubkey = sender
+  account = STATE.accounts.get(sender_pubkey)
+  ASSERT account exists
+  ASSERT account.btc_payout_address is not None, "BTC payout address not set."
+  
+  // A robust implementation requires an accumulator model to fairly distribute
+  // rewards based on balance held over time, preventing snapshot attacks.
+  // The logic below is a high-level representation of this concept.
+
+  // 1. Calculate rewards owed since user's last claim.
+  //    (e.g., reward = user.balance * (global_reward_per_token - user.reward_per_token_paid))
+  // 2. Update the user's state to reflect the new global accumulator value.
+  //    (e.g., user.reward_per_token_paid = global_reward_per_token)
+  // 3. Calculate the actual reward_amount based on the accumulator logic.
+  //    This is a placeholder for that complex calculation.
+  reward_amount = calculate_user_rewards(sender_pubkey) // Placeholder for accumulator logic
+  ASSERT reward_amount > 0, "No BTC rewards to claim."
+  
+  // This logic would be handled by the accumulator; rewards are pre-allocated.
+  // STATE.btc_reward_pool.total_rewards -= reward_amount
+  
+  // Emit event for off-chain TSS service to process the payout.
+  EMIT Event("BtcPayoutRequest", { recipient_address: account.btc_payout_address, amount: reward_amount, reason: "network_fee_dividend" })
+
+// Allows a human-verified user to claim their accrued UBI.
+// This is a "pull" system where tokens are minted on demand.
+FUNCTION claim_ubi():
+  // Pre-conditions
+  sender_pubkey = sender
+  account = STATE.accounts.get(sender_pubkey)
+  ASSERT account exists
+  ASSERT account.is_human_verified, "Account must be human-verified to claim UBI."
+  
+  // Calculate accrued blocks since last claim
+  blocks_accrued = current_block - account.last_claim_block
+  ASSERT blocks_accrued > 0, "No UBI accrued since last claim."
+
+  // Calculate UBI amount based on emission rate
+  ubi_to_mint = blocks_accrued * STATE.config.emission_schedule.rate_per_block
+
+  // Mint new tokens and update state
+  account.bubi_balance += ubi_to_mint
+  account.last_claim_block = current_block
+  STATE.config.bubi_emitted += ubi_to_mint
+  
+  STATE.accounts.set(sender_pubkey, account)
+  
+  EMIT Event("UBIClaimed", { owner: sender_pubkey, amount: ubi_to_mint })
+
+// -- Secure and Incentivized Content Posting (Reddit/Nostr-like) --
+
+// Posts a content hash to the chain, creating an immutable, timestamped record.
+FUNCTION post_durable_content(content_hash: Bytes, topic: String, parent_hash: Option<Bytes>):
+  // Pre-conditions
+  author_pubkey = sender
+  ASSERT account for author_pubkey exists
+  
+  pointer = ContentPointer {
+    author_pubkey: author_pubkey,
+    content_hash: content_hash,
+    topic: Some(topic),
+    parent_hash: parent_hash,
+    timestamp: current_block_time(),
+  }
+  
+  // Logic to store the pointer. A simple example:
+  if parent_hash is None: // It's a new root post
+    topic_posts = STATE.content_platform.get(topic) or []
+    topic_posts.append(pointer)
+    STATE.content_platform.set(topic, topic_posts)
+
+  EMIT Event("ContentPosted", { author: author_pubkey, hash: content_hash, topic: topic, parent: parent_hash })
+
+// Posts content and attaches a BUBI incentive to it.
+FUNCTION post_incentivized_content(content_hash: Bytes, topic: String, parent_hash: Option<Bytes>, incentive_amount: Uint):
+    // Pre-conditions
+    sender_pubkey = sender
+    sender_account = STATE.accounts.get(sender_pubkey)
+    ASSERT sender_account.bubi_balance >= incentive_amount, "Insufficient balance for incentive."
+
+    // Escrow the incentive
+    sender_account.bubi_balance -= incentive_amount
+    // (Logic to send incentive to recipients who engage with the content would be handled here)
+
+    // Store the content pointer
+    post_durable_content(content_hash, topic, parent_hash)
+    
+    STATE.accounts.set(sender_pubkey, sender_account)
+    EMIT Event("IncentivizedContentPosted", { from: sender_pubkey, hash: content_hash, incentive: incentive_amount })
+
+// -- Guardian Management --
+
+// A user requests to replace one of their current guardians with a new one.
+// This starts a time-lock.
+FUNCTION request_guardian_replacement(old_guardian_pubkey, new_guardian_pubkey):
+  // Pre-conditions
+  owner_pubkey = sender
+  account = STATE.accounts.get(owner_pubkey)
+  ASSERT old_guardian_pubkey is in account.guardians
+  ASSERT new_guardian_pubkey is not in account.guardians
+  
+  // Verify the new guardian is a valid, staked account
+  new_guardian_account = STATE.accounts.get(new_guardian_pubkey)
+  ASSERT new_guardian_account exists and is_staked
+  ASSERT new_guardian_account.guardian_pubkey_for_others is not None
+
+  // Set the pending replacement request
+  request = GuardianReplacementRequest {
+    new_guardian: new_guardian_pubkey,
+    request_block: current_block,
+  }
+  owner_requests = STATE.pending_guardian_replacements.get(owner_pubkey) or Map()
+  owner_requests.set(old_guardian_pubkey, request)
+  STATE.pending_guardian_replacements.set(owner_pubkey, owner_requests)
+
+  EMIT Event("GuardianReplacementRequested", { owner: owner_pubkey, old: old_guardian_pubkey, new: new_guardian_pubkey })
+
+// After a configured time period, the replacement can be finalized.
+// This can be called by anyone on behalf of the owner.
+FUNCTION finalize_guardian_replacement(owner_pubkey, old_guardian_pubkey):
+  // Pre-conditions
+  request_map = STATE.pending_guardian_replacements.get(owner_pubkey)
+  ASSERT request_map is not None
+  request = request_map.get(old_guardian_pubkey)
+  ASSERT request is not None
+  
+  // Check if the time-lock period has passed
+  REPLACEMENT_PERIOD_IN_BLOCKS = 518400 // Example: ~30 days
+  ASSERT current_block - request.request_block >= REPLACEMENT_PERIOD_IN_BLOCKS
+
+  // Perform the replacement
+  account = STATE.accounts.get(owner_pubkey)
+  account.guardians.remove(old_guardian_pubkey)
+  account.guardians.add(request.new_guardian)
+  
+  // Clean up the pending request
+  request_map.delete(old_guardian_pubkey)
+  if request_map.is_empty():
+    STATE.pending_guardian_replacements.delete(owner_pubkey)
+  else:
+    STATE.pending_guardian_replacements.set(owner_pubkey, request_map)
+
+  STATE.accounts.set(owner_pubkey, account)
+
+  EMIT Event("GuardianReplaced", { owner: owner_pubkey, old: old_guardian_pubkey, new: request.new_guardian })
+
+
+// --- Web3 Authentication (Human-Verified OAuth) ---
+
+// Called by an external service (or a user on their behalf) to create an open,
+// incentivized request for a signature.
+FUNCTION create_attestation_request(request_id: String, challenge: Bytes, incentive_amount: Uint, expiry_in_blocks: Uint):
+  // Pre-conditions
+  requester_pubkey = sender
+  requester_account = STATE.accounts.get(requester_pubkey)
+  ASSERT requester_account exists
+  ASSERT STATE.attestation_requests.get(request_id) is None, "Request ID already exists."
+  ASSERT requester_account.bubi_balance >= incentive_amount, "Insufficient balance for incentive."
+
+  // Escrow the incentive
+  requester_account.bubi_balance -= incentive_amount
+  STATE.accounts.set(requester_pubkey, requester_account)
+
+  // Create and store the request object
+  request = AttestationRequest {
+    request_id: request_id,
+    requester_pubkey: requester_pubkey,
+    challenge: challenge,
+    incentive_amount: incentive_amount,
+    status: "OPEN",
+    fulfiller_pubkey: None,
+    fulfillment_signature: None,
+    expiry_block: current_block + expiry_in_blocks,
+  }
+  STATE.attestation_requests.set(request_id, request)
+
+  EMIT Event("AttestationRequestCreated", { request_id: request_id, requester: requester_pubkey, incentive: incentive_amount })
+
+
+// Called by any user to fulfill an open request by providing a valid signature.
+FUNCTION fulfill_attestation_request(request_id: String, signature: Bytes):
+  // Pre-conditions
+  fulfiller_pubkey = sender
+  fulfiller_account = STATE.accounts.get(fulfiller_pubkey)
+  ASSERT fulfiller_account exists
+
+  request = STATE.attestation_requests.get(request_id)
+  ASSERT request is not None, "Request not found."
+  ASSERT request.status == "OPEN", "Request is not open."
+  ASSERT current_block < request.expiry_block, "Request has expired."
+
+  // Verify the signature
+  // The signature should be on the `challenge` bytes from the request.
+  ASSERT verify_signature(fulfiller_pubkey, request.challenge, signature) is True
+
+  // Pay the incentive to the fulfiller
+  fulfiller_account.bubi_balance += request.incentive_amount
+  STATE.accounts.set(fulfiller_pubkey, fulfiller_account)
+
+  // Update the request status
+  request.status = "FULFILLED"
+  request.fulfiller_pubkey = Some(fulfiller_pubkey)
+  request.fulfillment_signature = Some(signature)
+  STATE.attestation_requests.set(request_id, request)
+
+  EMIT Event("AttestationRequestFulfilled", { request_id: request_id, requester: request.requester_pubkey, fulfiller: fulfiller_pubkey, signature: signature })
+
+
+// Called by the original requester to cancel an expired request and reclaim the escrow.
+FUNCTION cancel_attestation_request(request_id: String):
+  // Pre-conditions
+  requester_pubkey = sender
+  requester_account = STATE.accounts.get(requester_pubkey)
+  ASSERT requester_account exists
+
+  request = STATE.attestation_requests.get(request_id)
+  ASSERT request is not None, "Request not found."
+  ASSERT request.requester_pubkey == requester_pubkey, "Only requester can cancel."
+  ASSERT request.status == "OPEN", "Request is not open for cancellation."
+  ASSERT current_block >= request.expiry_block, "Request has not expired yet."
+
+  // Refund the escrowed amount
+  requester_account.bubi_balance += request.incentive_amount
+  STATE.accounts.set(requester_pubkey, requester_account)
+
+  // Update the request status
+  request.status = "CANCELLED"
+  STATE.attestation_requests.set(request_id, request)
+
+  EMIT Event("AttestationRequestCancelled", { request_id: request_id, requester: requester_pubkey })
+
+
+// =================================================================
+// Query Functions (Read-Only Entry Points)
+// =================================================================
+
+QUERY get_account(owner_pubkey):
+  RETURN STATE.accounts.get(owner_pubkey)
+
+QUERY get_recovery_data(owner_pubkey):
+  account = STATE.accounts.get(owner_pubkey)
+  RETURN account.public_recovery_data
+
+QUERY get_durable_messages(owner_pubkey):
+  RETURN STATE.durable_messages.get(owner_pubkey)
