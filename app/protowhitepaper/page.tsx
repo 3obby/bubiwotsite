@@ -44,7 +44,7 @@ export default function ProtoWhitepaper() {
           <div className="font-mono text-gray-800 bg-gray-50 p-6 rounded-lg border border-gray-200 mb-8">
             <div className="text-lg mb-2 font-semibold">bubiwot protocol docs</div>
             <div className="ml-4">
-              ├── <a href="/pdf/BUBIWOT_LITEPAPERv3.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">BUBIWOT Litepaper</a>
+              ├── <a href="/pdf/BUBIWOT_LITEPAPERv7.pdf" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline">BUBIWOT Litepaper</a>
               <div className="text-gray-700 ml-4 text-sm">intro</div>
             </div>  <div className="ml-4">
               ├── <Link href="/protowhitepaper/bitcoin_ubi_client_mvp" className="text-blue-700 hover:underline">bitcoin_ubi_client_mvp</Link>
